@@ -46,3 +46,13 @@ class ProfileUpdate(BaseModel):
 
 class ChangePassword(BaseModel):
     password: constr(max_length=128)
+
+class StorageAreaSchema(BaseModel):
+    area_no: int
+    user_no: int
+    area_name: str
+    area_created_date: datetime
+    storage_owner: bool
+
+    class Config: 
+        orm_mode = True # ORM과 호환되도록 설정
