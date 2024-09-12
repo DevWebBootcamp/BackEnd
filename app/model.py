@@ -80,3 +80,13 @@ class AuthSocialLogin(Base):
     refresh_token = Column(String(256)) #
 
     user = relationship("MemberUser", back_populates="social_logins")
+
+# 공간 조회 테이블
+class Storage_Area(Base):
+    __tablename__ = "storage_area"
+
+    area_no = Column(Integer, primary_key=True, nullable=False)
+    user_no = Column(Integer, ForeignKey('member_user.user_no'))
+    area_name = Column(String(50), nullable=False)
+    area_created_date = Column(DateTime, nullable=False)
+    storage_owner = Column(Boolean, default=True)

@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from app.model import MemberUser as member_user
 from app.model import MemberProfile as member_profile 
+from app.model import Storage_Area as storage_area
 from app.schema import (
     UserCreate,
     ProfileUpdate,
@@ -97,3 +98,18 @@ def update_user_password(db: Session, user: member_user, password: str):
     user.password = hashed_password
     db.commit()
     return user
+
+# 공간 조회
+def get_user_storage_space(db: Session, user_no: int, area_no: int):
+    # user_no와 area_no 일치하는 공간을 조회
+    space = (
+        db.query(storage_area)
+        .filter(storage_area.user_no == user_no, storage_area.area_no == area_no, storage_area.storage_owner == True)
+        .first()
+    )
+    
+    if not space:
+        raise HTTPException(status_code=404, detail="No storage space found for this user with the given area_no")
+    
+    return space
+
