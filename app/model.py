@@ -56,6 +56,7 @@ class MemberUser(Base):
         kst_now = utc_now.astimezone(pytz.timezone("Asia/Seoul"))  # KST 시간대로 변환
         return kst_now
 
+# 사용자 프로필 테이블
 class MemberProfile(Base):
     __tablename__ = "member_profile"
 
@@ -68,7 +69,7 @@ class MemberProfile(Base):
 
     user = relationship("MemberUser", back_populates="profile")
 
-
+# 소셜 로그인 테이블
 class AuthSocialLogin(Base):
     __tablename__ = "auth_social_login"
 

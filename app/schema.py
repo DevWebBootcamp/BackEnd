@@ -58,4 +58,11 @@ class StorageAreaSchema(BaseModel):
     storage_owner: bool
 
     class Config: 
-        orm_mode = True # ORM과 호환되도록 설정
+        from_attributes = True
+
+# schema.py에 추가
+class StorageAreaCreate(BaseModel):
+    area_name: str
+
+class StorageAreaUpdate(BaseModel):
+    area_name: str

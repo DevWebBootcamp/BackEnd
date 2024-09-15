@@ -16,6 +16,22 @@ def get_db():
     finally:
         db.close()
 
+
+# 사용자 공간 추가
+@router.post("/{user_no}/spaces", response_model=schema.StorageAreaSchema, summary="사용자 공간 추가")
+def create_user_storage_space(
+    user_no: int, 
+    storage_data: schema.StorageAreaCreate, 
+    db: Session = Depends(get_db), 
+    current_user: schema.User = Depends(auth.get_current_user)
+):
+    # 현재 로그인한 사용자만 자신의 저장 공간을 추가할 수 있도록 제한
+    if user_no != current_user.user_no:
+        raise HTTPException(status_code=403, detail="You do not have permission to add storage space.")
+
+    space = crud.create_storage_space(db=db, user_no=user_no, area_name=storage_data.area_name)
+    return space
+
 # 사용자 공간 조회
 @router.get("/{user_no}/spaces/{area_no}", response_model=schema.StorageAreaSchema, summary="특정 저장 공간 조회")
 def read_user_storage_space(
