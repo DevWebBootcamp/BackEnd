@@ -127,3 +127,23 @@ def get_user_storage_space(db: Session, user_no: int, area_no: int):
     
     return space
 
+# 공간 수정
+def update_storage_space(db: Session, user_no: int, area_no: int, area_name: str):
+    storage_space = db.query(storage_area).filter(storage_area.user_no == user_no, storage_area.area_no == area_no).first()
+    if not storage_space:
+        raise HTTPException(status_code=404, detail="Storage area not found")
+    
+    storage_space.area_name = area_name
+    db.commit()
+    db.refresh(storage_space)
+    return storage_space
+
+# 공간 삭제
+def delete_storage_space(db: Session, user_no: int, area_no: int):
+    storage_space = db.query(storage_area).filter(storage_area.user_no == user_no, storage_area.area_no == area_no).first()
+    if not storage_space:
+        raise HTTPException(status_code=404, detail="Storage area not found")
+    
+    db.delete(storage_space)
+    db.commit()
+    return {"msg": "Storage space deleted successfully"}

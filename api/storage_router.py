@@ -48,3 +48,34 @@ def read_user_storage_space(
     space = crud.get_user_storage_space(db, user_no=user_no, area_no=area_no)
     
     return space
+
+# 사용자 공간 수정
+@router.put("/{user_no}/spaces/{area_no}", response_model=schema.StorageAreaSchema, summary="사용자 공간 수정")
+def update_user_storage_space(
+    user_no: int, 
+    area_no: int, 
+    storage_data: schema.StorageAreaUpdate, 
+    db: Session = Depends(get_db), 
+    current_user: schema.User = Depends(auth.get_current_user)
+):
+    # 현재 로그인한 사용자만 자신의 저장 공간을 수정할 수 있도록 제한
+    if user_no != current_user.user_no:
+        raise HTTPException(status_code=403, detail="You do not have permission to update this storage space.")
+    
+    space = crud.update_storage_space(db=db, user_no=user_no, area_no=area_no, area_name=storage_data.area_name)
+    return space
+
+
+# 사용자 공간 삭제
+@router.delete("/{user_no}/spaces/{area_no}", summary="사용자 공간 삭제")
+def delete_user_storage_space(
+    user_no: int, 
+    area_no: int, 
+    db: Session = Depends(get_db), 
+    current_user: schema.User = Depends(auth.get_current_user)
+):
+    # 현재 로그인한 사용자만 자신의 저장 공간을 삭제할 수 있도록 제한
+    if user_no != current_user.user_no:
+        raise HTTPException(status_code=403, detail="You do not have permission to delete this storage space.")
+    
+    return crud.delete_storage_space(db=db, user_no=user_no, area_no=area_no)
