@@ -30,6 +30,9 @@ class UserInDB(UserCreate):
     class Config:
         from_attributes = True
 
+class VerifyCodeRequest(BaseModel):
+    email: EmailStr
+    verification_code: constr(max_length=6)
 
 # UserCreate의 확장으로 추가 데이터 없이 모든 속성 상속
 class User(UserInDB):

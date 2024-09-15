@@ -52,6 +52,7 @@ def authenticate_user(db: Session, user_email: str, password: str):
         return db_user
     return None
 
+# 프로필 등록
 def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate):
     user = get_user_by_no(db, user_no=user_no)
     if not user:
