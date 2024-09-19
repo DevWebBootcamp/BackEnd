@@ -52,6 +52,7 @@ def authenticate_user(db: Session, user_email: str, password: str):
         return db_user
     return None
 
+# 프로필 등록
 def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate):
     user = get_user_by_no(db, user_no=user_no)
     if not user:
@@ -99,6 +100,19 @@ def update_user_password(db: Session, user: member_user, password: str):
     db.commit()
     return user
 
+# 공간 추가
+def create_storage_space(db: Session, user_no: int, area_name: str):
+    storage_space = storage_area(
+        user_no=user_no,
+        area_name=area_name,
+        area_created_date=member_user.get_kst_now(),
+        storage_owner=True
+    )
+    db.add(storage_space)
+    db.commit()
+    db.refresh(storage_space)
+    return storage_space
+
 # 공간 조회
 def get_user_storage_space(db: Session, user_no: int, area_no: int):
     # user_no와 area_no 일치하는 공간을 조회
@@ -113,3 +127,23 @@ def get_user_storage_space(db: Session, user_no: int, area_no: int):
     
     return space
 
+# 공간 수정
+def update_storage_space(db: Session, user_no: int, area_no: int, area_name: str):
+    storage_space = db.query(storage_area).filter(storage_area.user_no == user_no, storage_area.area_no == area_no).first()
+    if not storage_space:
+        raise HTTPException(status_code=404, detail="Storage area not found")
+    
+    storage_space.area_name = area_name
+    db.commit()
+    db.refresh(storage_space)
+    return storage_space
+
+# 공간 삭제
+def delete_storage_space(db: Session, user_no: int, area_no: int):
+    storage_space = db.query(storage_area).filter(storage_area.user_no == user_no, storage_area.area_no == area_no).first()
+    if not storage_space:
+        raise HTTPException(status_code=404, detail="Storage area not found")
+    
+    db.delete(storage_space)
+    db.commit()
+    return {"msg": "Storage space deleted successfully"}
