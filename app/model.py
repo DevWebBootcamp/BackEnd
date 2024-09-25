@@ -82,7 +82,7 @@ class AuthSocialLogin(Base):
 
     user = relationship("MemberUser", back_populates="social_logins")
 
-# 공간 조회 테이블
+# 공간 테이블
 class Storage_Area(Base):
     __tablename__ = "storage_area"
 
@@ -91,3 +91,16 @@ class Storage_Area(Base):
     area_name = Column(String(50), nullable=False)
     area_created_date = Column(DateTime, nullable=False)
     storage_owner = Column(Boolean, default=True)
+
+# 가구 테이블
+class Storage_Storage(Base):
+    __tablename__ = "storage_storage"
+
+    storage_no = Column(Integer, primary_key=True, index=True) 
+    area_no = Column(Integer, ForeignKey('storage_area.area_no'))  
+    storage_name = Column(String(50), nullable=False)  
+    storage_column = Column(Integer, nullable=False)  # 열
+    storage_row = Column(Integer, nullable=False)  # 행
+    storage_location = Column(String(50), nullable=False) 
+    storage_description = Column(String(100), nullable=True)
+    storage_created_date = Column(DateTime, default=datetime.utcnow)  # 생성 날짜

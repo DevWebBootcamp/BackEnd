@@ -2,10 +2,14 @@ from sqlalchemy.orm import Session, joinedload
 from app.model import MemberUser as member_user
 from app.model import MemberProfile as member_profile 
 from app.model import Storage_Area as storage_area
+from app.model import Storage_Storage as storage_storage
 from app.schema import (
     UserCreate,
     ProfileUpdate,
-    ProfileCreate
+    ProfileCreate,
+    StorageCreate,
+    StorageUpdate,
+    Storage,
 )
 from fastapi import HTTPException
 
@@ -147,3 +151,62 @@ def delete_storage_space(db: Session, user_no: int, area_no: int):
     db.delete(storage_space)
     db.commit()
     return {"msg": "Storage space deleted successfully"}
+
+# 사용자가 소유한 공간 목록을 반환하는 함수
+def get_areas_by_user(db: Session, user_no: int):
+    return db.query(storage_area).filter(storage_area.user_no == user_no).all()
+
+# 가구 추가
+def create_storage(db: Session, storage: StorageCreate):
+    db_storage = storage_storage(
+        area_no=storage.area_no,
+        storage_name=storage.storage_name,
+        storage_column=storage.storage_column,
+        storage_row=storage.storage_row,
+        storage_location=storage.storage_location,
+        storage_description=storage.storage_description,
+    )
+    db.add(db_storage)
+    db.commit()
+    db.refresh(db_storage)
+    return db_storage
+
+# 가구 조회
+def get_storage(db: Session, storage_no: int):
+    storage = (
+       db.query(storage_storage).filter(storage_storage.storage_no == storage_no).first()
+    )
+    
+    if not storage:
+        raise HTTPException(status_code=404, detail="Storage not found")
+    
+    return storage
+
+# 특정 공간에 있는 모든 가구 조회
+def get_storages_by_area(db: Session, area_no: int):
+    # 특정 공간에 있는 모든 가구 조회
+    storages = db.query(storage_storage).filter(storage_storage.area_no == area_no).all()
+    return storages
+
+
+# 가구 수정
+def update_storage(db: Session, storage_no: int, storage_data: StorageUpdate):
+    db_storage = get_storage(db, storage_no)
+    if not db_storage:
+        raise HTTPException(status_code=404, detail="Storage not found")
+    
+    for key, value in storage_data.dict(exclude_unset=True).items():
+        setattr(db_storage, key, value)
+    db.commit()
+    db.refresh(db_storage)
+    return db_storage
+
+# 가구 삭제
+def delete_storage(db: Session, storage_no: int):
+    db_storage = get_storage(db, storage_no)
+    if not db_storage:
+        raise HTTPException(status_code=404, detail="Storage not found")
+    
+    db.delete(db_storage)
+    db.commit()
+    return {"msg": "Storage deleted successfully"}

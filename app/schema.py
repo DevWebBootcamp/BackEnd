@@ -60,9 +60,42 @@ class StorageAreaSchema(BaseModel):
     class Config: 
         from_attributes = True
 
-# schema.py에 추가
+
 class StorageAreaCreate(BaseModel):
     area_name: str
 
 class StorageAreaUpdate(BaseModel):
     area_name: str
+
+
+# 가구 생성
+class StorageCreate(BaseModel):
+    area_no: int
+    storage_name: str
+    storage_column: int
+    storage_row: int
+    storage_location: str
+    storage_description: Optional[str] = None
+
+# 가구 수정
+class StorageUpdate(BaseModel):
+    storage_name: Optional[str] = None
+    storage_column: Optional[int] = None
+    storage_row: Optional[int] = None
+    storage_location: Optional[str] = None
+    storage_description: Optional[str] = None
+
+# 가구 조회
+class Storage(BaseModel):
+    storage_no: int
+    area_no: int
+    storage_name: str
+    storage_column: int
+    storage_row: int
+    storage_location: str
+    storage_description: Optional[str]
+    storage_created_date: datetime
+    storage_modification_date: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
