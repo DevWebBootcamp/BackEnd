@@ -32,7 +32,7 @@ def create_user_storage_space(
     space = crud.create_storage_space(db=db, user_no=user_no, area_name=storage_data.area_name)
     return space
 
-# 사용자 공간 조회
+# 특정 저장 공간 조회
 @router.get("/{user_no}/spaces/{area_no}", response_model=schema.StorageAreaSchema, summary="특정 저장 공간 조회")
 def read_user_storage_space(
     user_no: int, 
