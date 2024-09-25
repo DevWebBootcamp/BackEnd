@@ -70,7 +70,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     
     access_token = auth.create_access_token(user.email)
     refresh_token = auth.create_refresh_token(user.email)
-    return {"access_token": access_token, "refresh_token": refresh_token, "user_email": user.email}
+    return {"access_token": access_token, "refresh_token": refresh_token, "user_no": user.user_no}
 
 # 프로필 등록
 @router.post("/profile-create/{user_no}", response_model=schema.ProfileCreate, summary="프로필 등록")
