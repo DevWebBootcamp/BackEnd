@@ -79,6 +79,11 @@ def profile_create_route(user_no: int, profile_data: schema.ProfileCreate, db: S
     if user_no != current_user.user_no:
         raise HTTPException(status_code=403, detail="You do not have permission to create this profile.")
     
+    # 이미 프로필을 등록한 경우
+    existing_profile = crud.get_profile_by_user_no(db=db, user_no=user_no)
+    if existing_profile:
+        raise HTTPException(status_code=400, detail="Profile already exists for this user.")
+    
     profile = crud.create_user_profile(db=db, user_no=user_no, profile_data=profile_data)
     return profile
 

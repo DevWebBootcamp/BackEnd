@@ -57,6 +57,11 @@ def authenticate_user(db: Session, user_email: str, password: str):
         return db_user
     return None
 
+# 사용자 프로필 조회
+def get_profile_by_user_no(db: Session, user_no: int):
+    return db.query(member_profile).filter(member_profile.user_no == user_no).first()
+
+
 # 프로필 등록
 def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate):
     user = get_user_by_no(db, user_no=user_no)
@@ -76,7 +81,7 @@ def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate):
     
     return profile
 
-# 프로필 조회
+# 사용자 정보 + 프로필 조회
 def get_user_info(db: Session, user_no: int):
     user = (db.query(member_user).join(member_profile).filter(member_user.user_no == user_no).first())
     
