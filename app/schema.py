@@ -38,6 +38,18 @@ class VerifyCodeRequest(BaseModel):
 class User(UserInDB):
     pass
 
+class UserInfo(BaseModel):
+    email: EmailStr
+    user_name: str
+    nickname: Optional[str]
+    cell_phone: str
+    birthday: datetime
+    gender: str
+    image_url: Optional[str]
+
+    class Config:
+        from_attributes = True
+
 class ProfileCreate(BaseModel):
     nickname: Optional[str] = None
     image_url: Optional[str] = None

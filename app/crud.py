@@ -5,6 +5,7 @@ from app.model import Storage_Area as storage_area
 from app.model import Storage_Storage as storage_storage
 from app.schema import (
     UserCreate,
+    UserInfo,
     ProfileUpdate,
     ProfileCreate,
     StorageCreate,
@@ -75,6 +76,25 @@ def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate):
     
     return profile
 
+# 프로필 조회
+def get_user_info(db: Session, user_no: int):
+    user = (db.query(member_user).join(member_profile).filter(member_user.user_no == user_no).first())
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # 사용자 정보와 프로필 정보를 함께 반환
+    user_info = UserInfo(
+        email=user.email,
+        user_name=user.user_name,
+        nickname=user.profile.nickname,
+        cell_phone=user.cell_phone,
+        birthday=user.birthday,
+        gender=user.gender,
+        image_url=user.profile.image_url,
+    )
+    
+    return user_info
 
 # 프로필 수정
 def profile_update(db:Session, user_no: int, profile_data:ProfileUpdate):
