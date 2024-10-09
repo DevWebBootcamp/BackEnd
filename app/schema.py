@@ -71,6 +71,7 @@ class StorageAreaSchema(BaseModel):
 
     class Config: 
         from_attributes = True
+        __dict__ = True
 
 
 class StorageAreaCreate(BaseModel):

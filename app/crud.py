@@ -142,9 +142,22 @@ def create_storage_space(db: Session, user_no: int, area_name: str):
     db.refresh(storage_space)
     return storage_space
 
-# 공간 조회
+# 모든 공간 조회
+def load_user_storage_space(db: Session, user_no: int):
+    spaces = (
+        db.query(storage_area)
+        .filter(storage_area.user_no == user_no, storage_area.storage_owner == True)
+        .all()
+    )
+
+    if not spaces:
+        raise HTTPException(status_code=404, detail="No storage spaces found for this user with the given area_no")
+    return spaces
+
+
+# 특정 공간 조회
 def get_user_storage_space(db: Session, user_no: int, area_no: int):
-    # user_no와 area_no 일치하는 공간을 조회
+    # user_no와 area_no 일치하는 특정 공간을 조회
     space = (
         db.query(storage_area)
         .filter(storage_area.user_no == user_no, storage_area.area_no == area_no, storage_area.storage_owner == True)
