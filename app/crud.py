@@ -255,7 +255,7 @@ def delete_storage(db: Session, storage_no: int):
     db.commit()
     return {"msg": "Storage deleted successfully"}
 
-# 상세 저장 위치 생성
+# 상세 저장 위치 추가
 def create_detail_storage(db: Session, storage_no: int, detail_storage_name: str, storage_description: str = None):
     
     storage = db.query(storage_storage).filter(storage_storage.storage_no == storage_no).first()
@@ -291,7 +291,7 @@ def get_detail_storage(db: Session, detail_storage_no: int):
 
 # 사용자가 소유한 모든 상세 저장 위치 조회
 def get_all_detail_storages_by_user(db: Session, user_no: int):
-    # 사용자의 모든 공간(area_no)을 가져온 후 그 공간들에 포함된 상세 저장 위치를 조회합니다.
+    # 사용자의 모든 공간(area_no)을 가져온 후 그 공간들에 포함된 상세 저장 위치 조회
     user_areas = db.query(storage_area.area_no).filter(storage_area.user_no == user_no).all()
     area_nos = [area.area_no for area in user_areas]  # area_no 목록 추출
     
@@ -320,7 +320,7 @@ def delete_detail_storage(db: Session, detail_storage_no: int):
     db.commit()
     return {"msg": "Detail storage deleted successfully"}
 
-# 물건 생성
+# 물건 추가
 def create_item(db: Session, item: ItemCreate):
     # 먼저 detail_storage_no가 존재하는지 확인
     detail_storage_instance = db.query(detail_storage).filter(detail_storage.detail_storage_no == item.detail_storage_no).first()

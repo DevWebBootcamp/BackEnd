@@ -193,7 +193,8 @@ def  delete_storage(
     db_storage = crud.delete_storage(db=db, storage_no=storage_no)
     return db_storage
 
-@router.post("/detail-storage", response_model=schema.DetailStorageCreate, summary="상세 저장 위치 생성")
+# 상세 저장 위치 추가
+@router.post("/detail-storage", response_model=schema.DetailStorageCreate, summary="상세 저장 위치 추가")
 def create_detail_storage(
     detail_storage: schema.DetailStorageCreate, 
     db: Session = Depends(get_db), 

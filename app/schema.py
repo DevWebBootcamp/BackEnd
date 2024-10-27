@@ -121,7 +121,7 @@ class Storage(BaseModel):
     class Config:
         from_attributes = True
 
-# 상세 저장 위치 생성
+# 상세 저장 위치 추가
 class DetailStorageCreate(BaseModel):
     storage_no: int
     detail_storage_name: str
@@ -132,7 +132,7 @@ class DetailStorageUpdate(BaseModel):
     detail_storage_name: Optional[str] = None
     storage_description: Optional[str] = None
 
-# 물건 생성
+# 물건 추가
 class ItemCreate(BaseModel):
     detail_storage_no: int
     item_name: str
