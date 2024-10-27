@@ -11,6 +11,14 @@ class GenderTypeEnum(str, Enum):
     female = "여성"
     other = "기타"
 
+# item_type을 위한 Enum 정의
+class ItemTypeEnum(str, Enum):
+    food = "식품"
+    electronics = "전자제품"
+    clothing = "의류"
+    office_supplies = "사무용품"
+    household_goods = "생활용품"
+    other = "기타"
 
 # 사용자 생성을 위한 필드 정의
 class UserCreate(BaseModel):
@@ -112,3 +120,27 @@ class Storage(BaseModel):
 
     class Config:
         from_attributes = True
+
+# 상세 저장 위치 생성
+class DetailStorageCreate(BaseModel):
+    storage_no: int
+    detail_storage_name: str
+    storage_description: Optional[str] = None
+
+# 상세 저장 위치 수정
+class DetailStorageUpdate(BaseModel):
+    detail_storage_name: Optional[str] = None
+    storage_description: Optional[str] = None
+
+# 물건 생성
+class ItemCreate(BaseModel):
+    detail_storage_no: int
+    item_name: str
+    item_type: ItemTypeEnum
+    item_quantity: int = Field(..., gt=0)  # 1 이상만 허용
+
+# 물건 수정
+class ItemUpdate(BaseModel):
+    item_name: Optional[str] = None
+    item_type: Optional[str] = None
+    item_quantity: Optional[int] = None
