@@ -3,6 +3,7 @@ from sqlalchemy import (
     Integer,
     String,
     Boolean,
+    Text,
     DateTime,   # DB의 테이블 정의에 사용되는 것
     ForeignKey,
     Time,
@@ -63,7 +64,7 @@ class MemberProfile(Base):
     profile_id = Column(Integer, primary_key=True)
     user_no = Column(Integer, ForeignKey('member_user.user_no'))
     nickname = Column(String(12))
-    image_url = Column(String(100))
+    image_data = Column(Text, nullable=True)  # base64 문자열로 이미지 저장
     update_date = Column(DateTime)
     create_date = Column(DateTime)
 

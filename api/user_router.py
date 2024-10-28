@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, File, UploadFile, Depends, HTTPException, Form, status
 from sqlalchemy.orm import Session
 import app.crud as crud
 import app.schema as schema
 import app.auth  as auth
 from app.database import SessionLocal
 from fastapi.security import OAuth2PasswordRequestForm
-from typing import List
+from typing import Optional
+from fastapi.responses import Response
+import base64
 
 router = APIRouter()
 
@@ -73,43 +75,97 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     return {"access_token": access_token, "refresh_token": refresh_token, "user_no": user.user_no}
 
 # 프로필 등록
-@router.post("/profile-create/{user_no}", response_model=schema.ProfileCreate, summary="프로필 등록")
-def profile_create_route(user_no: int, profile_data: schema.ProfileCreate, db: Session = Depends(get_db), current_user: schema.User = Depends(auth.get_current_user)):
-    # 현재 로그인한 사용자만 자신의 프로필을 등록할 수 있도록 제한
+@router.post("/profile-create/{user_no}", summary="프로필 등록")
+async def profile_create_route(
+    user_no: int,
+    nickname: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: schema.User = Depends(auth.get_current_user)
+):
     if user_no != current_user.user_no:
         raise HTTPException(status_code=403, detail="You do not have permission to create this profile.")
-    
-    # 이미 프로필을 등록한 경우
+
     existing_profile = crud.get_profile_by_user_no(db=db, user_no=user_no)
     if existing_profile:
         raise HTTPException(status_code=400, detail="Profile already exists for this user.")
-    
-    profile = crud.create_user_profile(db=db, user_no=user_no, profile_data=profile_data)
-    return profile
+
+    try:
+        image_data = await file.read()
+        if not image_data:
+            raise HTTPException(status_code=400, detail="Empty image file uploaded.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read image file: {str(e)}")
+
+    profile_data = schema.ProfileCreate(nickname=nickname)
+    profile = crud.create_user_profile(db=db, user_no=user_no, profile_data=profile_data, image_data=image_data)
+
+    return {"msg": "Profile created successfully", "user_no": user_no}
 
 # 프로필 조회
 @router.get("/profile/{user_no}", response_model=schema.UserInfo, summary="프로필 조회")
-def profile_read_route(db: Session = Depends(get_db), current_user: schema.User = Depends(auth.get_current_user)):
-    
-    user_info = crud.get_user_info(db=db, user_no=current_user.user_no)
-    
+def profile_read_route(
+    user_no: int,
+    db: Session = Depends(get_db),
+    current_user: schema.User = Depends(auth.get_current_user)
+):
+    # 사용자 권한 확인
+    if user_no != current_user.user_no:
+        raise HTTPException(status_code=403, detail="You do not have permission to view this profile.")
+
+    # 사용자 정보와 프로필 정보 가져오기
+    user_info = crud.get_user_info_with_profile(db=db, user_no=user_no)
     if not user_info:
-        raise HTTPException(status_code=404, detail="User not found")
-    
+        raise HTTPException(status_code=404, detail="User or Profile not found")
+
+    # JSON 형태로 사용자 정보 반환
     return user_info
 
+# 이미지 조회
+@router.get("/profile-image/{user_no}", summary="프로필 이미지 조회")
+def get_profile_image(user_no: int, db: Session = Depends(get_db)):
+    profile = crud.get_profile_by_user_no(db, user_no=user_no)
+    if not profile or not profile.image_data:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    # base64 문자열을 바이너리로 디코딩
+    image_data = base64.b64decode(profile.image_data)
+
+    # 이미지 반환
+    return Response(content=image_data, media_type="image/*")
+
 # 프로필 수정
-@router.put("/profile-update/{user_no}", response_model=schema.ProfileUpdate, summary="프로필 수정")
-def profile_update_route(user_no: int, profile_data: schema.ProfileUpdate, db: Session = Depends(get_db), current_user: schema.User = Depends(auth.get_current_user)):
-    # 현재 로그인한 사용자만 자신의 프로필을 수정할 수 있도록 제한
+@router.put("/profile-update/{user_no}", summary="프로필 수정")
+async def profile_update_route(
+    user_no: int,
+    nickname: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),  # 이미지 파일은 선택 사항
+    db: Session = Depends(get_db),
+    current_user: schema.User = Depends(auth.get_current_user)
+):
+    # 사용자 권한 확인
     if user_no != current_user.user_no:
         raise HTTPException(status_code=403, detail="You do not have permission to update this profile.")
-    
-    profile_update = crud.profile_update(db=db, user_no=user_no, profile_data=profile_data)
-    if profile_update is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    return profile_update
+
+    # 이미지 파일이 업로드된 경우 읽기
+    image_data = None
+    if file:
+        try:
+            image_data = await file.read()
+            if not image_data:
+                raise HTTPException(status_code=400, detail="Empty image file uploaded.")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to read image file: {str(e)}")
+
+    # 프로필 업데이트
+    updated_profile = crud.profile_update(
+        db=db, 
+        user_no=user_no, 
+        profile_data=schema.ProfileUpdate(nickname=nickname), 
+        image_file=image_data
+    )
+
+    return {"msg": "Profile updated successfully", "profile": updated_profile}
 
 # 비밀번호 변경
 @router.put("/change-password", summary="비밀번호 변경")

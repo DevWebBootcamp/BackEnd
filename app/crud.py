@@ -19,6 +19,8 @@ from app.schema import (
     ItemUpdate
 )
 from fastapi import HTTPException
+import base64
+from typing import Optional
 
 def get_user_by_no(db: Session, user_no: int):
     return db.query(member_user).filter(member_user.user_no == user_no).first()
@@ -63,52 +65,63 @@ def authenticate_user(db: Session, user_email: str, password: str):
         return db_user
     return None
 
-# 사용자 프로필 조회
-def get_profile_by_user_no(db: Session, user_no: int):
-    return db.query(member_profile).filter(member_profile.user_no == user_no).first()
-
 
 # 프로필 등록
-def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate):
+def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate, image_data: bytes):
     user = get_user_by_no(db, user_no=user_no)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    profile = member_profile (
+    # 이미 프로필이 존재하는지 확인
+    existing_profile = get_profile_by_user_no(db=db, user_no=user_no)
+    if existing_profile:
+        raise HTTPException(status_code=400, detail="Profile already exists for this user.")
+
+    # 이미지 데이터를 base64로 인코딩
+    encoded_image = base64.b64encode(image_data).decode('utf-8')
+
+    
+    profile = member_profile(
         user_no=user_no,
         nickname=profile_data.nickname,
-        image_url=profile_data.image_url,
+        image_data=encoded_image,  # base64 인코딩된 이미지 데이터 저장
         create_date=member_user.get_kst_now()
     )
-    
+
     db.add(profile)
     db.commit()
     db.refresh(profile)
-    
+
     return profile
 
+# 프로필 조회 // 이미지 조회에 필요
+def get_profile_by_user_no(db: Session, user_no: int):
+    return db.query(member_profile).filter(member_profile.user_no == user_no).first()
+
 # 사용자 정보 + 프로필 조회
-def get_user_info(db: Session, user_no: int):
-    user = (db.query(member_user).join(member_profile).filter(member_user.user_no == user_no).first())
+def get_user_info_with_profile(db: Session, user_no: int) -> UserInfo:
+    # 사용자 정보 조회
+    user = get_user_by_no(db, user_no)
+
+    # 프로필 정보 조회
+    profile = get_profile_by_user_no(db, user_no)
+
+    # 사용자 또는 프로필이 없을 경우 None 반환
+    if not user or not profile:
+        return None
     
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # 사용자 정보와 프로필 정보를 함께 반환
-    user_info = UserInfo(
+    # 사용자 정보와 프로필 정보를 UserInfo 스키마에 맞게 반환
+    return UserInfo(
         email=user.email,
         user_name=user.user_name,
-        nickname=user.profile.nickname,
+        nickname=profile.nickname,
         cell_phone=user.cell_phone,
         birthday=user.birthday,
         gender=user.gender,
-        image_url=user.profile.image_url,
     )
-    
-    return user_info
 
 # 프로필 수정
-def profile_update(db:Session, user_no: int, profile_data:ProfileUpdate):
+def profile_update(db:Session, user_no: int, profile_data:ProfileUpdate, image_file: Optional[bytes] = None):
     user = get_user_by_no(db, user_no=user_no)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -119,8 +132,11 @@ def profile_update(db:Session, user_no: int, profile_data:ProfileUpdate):
     
     if profile_data.nickname is not None:
         profile.nickname = profile_data.nickname
-    if profile_data.image_url is not None:
-        profile.image_url = profile_data.image_url
+    # 새 이미지가 업로드된 경우 Base64로 인코딩 후 저장
+    if image_file is not None:
+        encoded_image = base64.b64encode(image_file).decode('utf-8')
+        profile.image_data = encoded_image
+
     
     profile.update_date = member_user.get_kst_now()  # 사용자 정보 수정 시각 업데이트
     db.commit()

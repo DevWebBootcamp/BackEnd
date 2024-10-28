@@ -53,19 +53,16 @@ class UserInfo(BaseModel):
     cell_phone: str
     birthday: datetime
     gender: str
-    image_url: Optional[str]
 
     class Config:
         from_attributes = True
 
 class ProfileCreate(BaseModel):
     nickname: Optional[str] = None
-    image_url: Optional[str] = None
 
 
 class ProfileUpdate(BaseModel):
     nickname: Optional[str] = None
-    image_url: Optional[str] = None
 
 class ChangePassword(BaseModel):
     password: constr(max_length=128)
