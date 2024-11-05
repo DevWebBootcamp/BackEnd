@@ -64,7 +64,7 @@ class MemberProfile(Base):
     profile_id = Column(Integer, primary_key=True)
     user_no = Column(Integer, ForeignKey('member_user.user_no'))
     nickname = Column(String(12))
-    image_data = Column(Text, nullable=True)  # base64 문자열로 이미지 저장
+    image_url = Column(String(255), nullable=True)  # 이미지 파일 URL 저장
     update_date = Column(DateTime)
     create_date = Column(DateTime)
 

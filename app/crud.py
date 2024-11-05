@@ -20,7 +20,13 @@ from app.schema import (
 )
 from fastapi import HTTPException
 import base64
+import shutil
+import os
 from typing import Optional
+from fastapi import UploadFile
+
+# 이미지 파일을 저장할 경로
+IMAGE_DIR = "images/profile/"
 
 def get_user_by_no(db: Session, user_no: int):
     return db.query(member_user).filter(member_user.user_no == user_no).first()
@@ -67,50 +73,39 @@ def authenticate_user(db: Session, user_email: str, password: str):
 
 
 # 프로필 등록
-def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate, image_data: bytes):
+def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate, image_url: str):
     user = get_user_by_no(db, user_no=user_no)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # 이미 프로필이 존재하는지 확인
     existing_profile = get_profile_by_user_no(db=db, user_no=user_no)
     if existing_profile:
         raise HTTPException(status_code=400, detail="Profile already exists for this user.")
 
-    # 이미지 데이터를 base64로 인코딩
-    encoded_image = base64.b64encode(image_data).decode('utf-8')
-
-    
     profile = member_profile(
         user_no=user_no,
         nickname=profile_data.nickname,
-        image_data=encoded_image,  # base64 인코딩된 이미지 데이터 저장
+        image_url=image_url,  # 이미지 URL 저장
         create_date=member_user.get_kst_now()
     )
 
     db.add(profile)
     db.commit()
     db.refresh(profile)
-
     return profile
-
+    
 # 프로필 조회 // 이미지 조회에 필요
 def get_profile_by_user_no(db: Session, user_no: int):
     return db.query(member_profile).filter(member_profile.user_no == user_no).first()
 
 # 사용자 정보 + 프로필 조회
 def get_user_info_with_profile(db: Session, user_no: int) -> UserInfo:
-    # 사용자 정보 조회
     user = get_user_by_no(db, user_no)
-
-    # 프로필 정보 조회
     profile = get_profile_by_user_no(db, user_no)
 
-    # 사용자 또는 프로필이 없을 경우 None 반환
     if not user or not profile:
-        return None
-    
-    # 사용자 정보와 프로필 정보를 UserInfo 스키마에 맞게 반환
+        raise HTTPException(status_code=404, detail="User or profile not found")
+
     return UserInfo(
         email=user.email,
         user_name=user.user_name,
@@ -118,10 +113,11 @@ def get_user_info_with_profile(db: Session, user_no: int) -> UserInfo:
         cell_phone=user.cell_phone,
         birthday=user.birthday,
         gender=user.gender,
+         image_url=f"/images/profile/{os.path.basename(profile.image_url)}" if profile.image_url else None
     )
 
 # 프로필 수정
-def profile_update(db:Session, user_no: int, profile_data:ProfileUpdate, image_file: Optional[bytes] = None):
+def profile_update(db: Session, user_no: int, profile_data: ProfileUpdate, image_url: Optional[UploadFile] = None):
     user = get_user_by_no(db, user_no=user_no)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -129,19 +125,24 @@ def profile_update(db:Session, user_no: int, profile_data:ProfileUpdate, image_f
     profile = user.profile
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
-    
+
     if profile_data.nickname is not None:
         profile.nickname = profile_data.nickname
-    # 새 이미지가 업로드된 경우 Base64로 인코딩 후 저장
-    if image_file is not None:
-        encoded_image = base64.b64encode(image_file).decode('utf-8')
-        profile.image_data = encoded_image
 
-    
-    profile.update_date = member_user.get_kst_now()  # 사용자 정보 수정 시각 업데이트
+    # 새 이미지가 업로드된 경우 파일을 저장하고 URL 갱신
+    if image_url:
+        unique_filename = f"{uuid.uuid4().hex}_{image_url.filename}"
+        image_path = os.path.join(IMAGE_UPLOAD_DIR, unique_filename)
+        
+        with open(image_path, "wb") as image:
+            shutil.copyfileobj(image_file.file, image)
+        
+        profile.image_url = f"/images/profile/{unique_filename}"
+
+    # 수정 시각 업데이트
+    profile.update_date = member_user.get_kst_now()
     db.commit()
     db.refresh(profile)
-    
     return profile
 
 # 비밀번호 변경

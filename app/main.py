@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.user_router import router as user_router
 from api.storage_router import router as storage_router
 from app.database import create_tables
+from fastapi.staticfiles import StaticFiles
+from app.config import IMAGE_UPLOAD_DIR
 
 # 데이터베이스 테이블 생성
 create_tables()
@@ -23,6 +25,9 @@ app.add_middleware(
     allow_methods=["*"], # 허용할 HTTP 메서드 (예: GET, POST 등)
     allow_headers=["*"], # 허용할 HTTP 헤더
 )
+
+# static 경로로 images 디렉터리 접근 허용
+app.mount("/images", StaticFiles(directory=IMAGE_UPLOAD_DIR), name="images")
 
 # 라우터 등록
 app.include_router(user_router, prefix="/users", tags=["users"])

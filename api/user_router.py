@@ -1,13 +1,15 @@
 from fastapi import APIRouter, File, UploadFile, Depends, HTTPException, Form, status
 from sqlalchemy.orm import Session
-import app.crud as crud
-import app.schema as schema
-import app.auth  as auth
+from app import crud, schema, auth
 from app.database import SessionLocal
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Optional
 from fastapi.responses import Response
-import base64
+from app.config import IMAGE_UPLOAD_DIR  # 이미지 경로 설정
+import os, uuid, shutil
+from fastapi.responses import FileResponse
+import mimetypes
+import logging
 
 router = APIRouter()
 
@@ -83,26 +85,30 @@ async def profile_create_route(
     db: Session = Depends(get_db),
     current_user: schema.User = Depends(auth.get_current_user)
 ):
+
+    # 사용자 권한 확인
     if user_no != current_user.user_no:
         raise HTTPException(status_code=403, detail="You do not have permission to create this profile.")
 
+    # 기존 프로필이 있는지 확인
     existing_profile = crud.get_profile_by_user_no(db=db, user_no=user_no)
     if existing_profile:
         raise HTTPException(status_code=400, detail="Profile already exists for this user.")
 
-    try:
-        image_data = await file.read()
-        if not image_data:
-            raise HTTPException(status_code=400, detail="Empty image file uploaded.")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to read image file: {str(e)}")
-
+    # 이미지 저장
+    unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
+    image_path = os.path.join(IMAGE_UPLOAD_DIR, unique_filename)
+    
+    with open(image_path, "wb") as image_file:
+        shutil.copyfileobj(file.file, image_file)
+    
+    image_url = f"/images/profile/{unique_filename}"
     profile_data = schema.ProfileCreate(nickname=nickname)
-    profile = crud.create_user_profile(db=db, user_no=user_no, profile_data=profile_data, image_data=image_data)
-
+    
+    profile = crud.create_user_profile(db=db, user_no=user_no, profile_data=profile_data, image_url=image_url)
     return {"msg": "Profile created successfully", "user_no": user_no}
 
-# 프로필 조회
+# 사용자 정보 + 프로필 조회
 @router.get("/profile/{user_no}", response_model=schema.UserInfo, summary="프로필 조회")
 def profile_read_route(
     user_no: int,
@@ -113,26 +119,33 @@ def profile_read_route(
     if user_no != current_user.user_no:
         raise HTTPException(status_code=403, detail="You do not have permission to view this profile.")
 
-    # 사용자 정보와 프로필 정보 가져오기
     user_info = crud.get_user_info_with_profile(db=db, user_no=user_no)
     if not user_info:
         raise HTTPException(status_code=404, detail="User or Profile not found")
 
-    # JSON 형태로 사용자 정보 반환
     return user_info
 
 # 이미지 조회
 @router.get("/profile-image/{user_no}", summary="프로필 이미지 조회")
 def get_profile_image(user_no: int, db: Session = Depends(get_db)):
     profile = crud.get_profile_by_user_no(db, user_no=user_no)
-    if not profile or not profile.image_data:
-        raise HTTPException(status_code=404, detail="Image not found")
+    if not profile or not profile.image_url:
+        raise HTTPException(status_code=404, detail="Image file not found")
 
-    # base64 문자열을 바이너리로 디코딩
-    image_data = base64.b64decode(profile.image_data)
+    image_path = os.path.join(IMAGE_UPLOAD_DIR, os.path.basename(profile.image_url))
 
-    # 이미지 반환
-    return Response(content=image_data, media_type="image/*")
+    # 이미지 파일이 실제로 존재하는지 확인
+    if not os.path.exists(image_path):
+        raise HTTPException(status_code=404, detail="Image file not found")
+
+    with open(image_path, "rb") as image_file:
+        image_data = image_file.read()
+
+    # 파일 확장자에 따라 media_type 설정
+    file_extension = os.path.splitext(image_path)[1].lower()
+    media_type = "image/jpeg" if file_extension == ".jpg" or file_extension == ".jpeg" else "image/png"
+
+    return Response(content=image_data, media_type=media_type)
 
 # 프로필 수정
 @router.put("/profile-update/{user_no}", summary="프로필 수정")
@@ -143,28 +156,22 @@ async def profile_update_route(
     db: Session = Depends(get_db),
     current_user: schema.User = Depends(auth.get_current_user)
 ):
-    # 사용자 권한 확인
     if user_no != current_user.user_no:
         raise HTTPException(status_code=403, detail="You do not have permission to update this profile.")
 
-    # 이미지 파일이 업로드된 경우 읽기
-    image_data = None
+    image_url = None
     if file:
-        try:
-            image_data = await file.read()
-            if not image_data:
-                raise HTTPException(status_code=400, detail="Empty image file uploaded.")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to read image file: {str(e)}")
+        unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
+        image_path = os.path.join(IMAGE_UPLOAD_DIR, unique_filename)
 
-    # 프로필 업데이트
-    updated_profile = crud.profile_update(
-        db=db, 
-        user_no=user_no, 
-        profile_data=schema.ProfileUpdate(nickname=nickname), 
-        image_file=image_data
-    )
+        with open(image_path, "wb") as image_file:
+            shutil.copyfileobj(file.file, image_file)
+        
+        image_url = f"/images/profile/{unique_filename}"
 
+    profile_data = schema.ProfileUpdate(nickname=nickname)
+    updated_profile = crud.profile_update(db=db, user_no=user_no, profile_data=profile_data, image_url=image_url)
+    
     return {"msg": "Profile updated successfully", "profile": updated_profile}
 
 # 비밀번호 변경

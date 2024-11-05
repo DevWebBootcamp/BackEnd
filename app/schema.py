@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr, Field, constr, HttpUrl, validator
 from enum import Enum
 from typing import Optional
 from datetime import datetime, date, time
+from fastapi import UploadFile
 
 
 # gender를 위한 Enum 정의
@@ -53,16 +54,18 @@ class UserInfo(BaseModel):
     cell_phone: str
     birthday: datetime
     gender: str
+    image_url: Optional[str] = None
 
     class Config:
         from_attributes = True
 
 class ProfileCreate(BaseModel):
     nickname: Optional[str] = None
-
+    image_url: Optional[UploadFile] = None  # 이미지 파일 업로드 지원
 
 class ProfileUpdate(BaseModel):
     nickname: Optional[str] = None
+    image_url: Optional[UploadFile] = None
 
 class ChangePassword(BaseModel):
     password: constr(max_length=128)
