@@ -64,7 +64,7 @@ class MemberProfile(Base):
     profile_id = Column(Integer, primary_key=True)
     user_no = Column(Integer, ForeignKey('member_user.user_no'))
     nickname = Column(String(12))
-    image_url = Column(String(255), nullable=True)  # 이미지 파일 URL 저장
+    image_url = Column(String(100), nullable=True)  # 이미지 파일 URL 저장
     update_date = Column(DateTime)
     create_date = Column(DateTime)
 
@@ -93,51 +93,50 @@ class Storage_Area(Base):
     area_created_date = Column(DateTime, nullable=False)
     storage_owner = Column(Boolean, default=True)
 
-    detail_storages = relationship("Detail_Storage", back_populates="storage_area")
+    rooms = relationship("Storage_Room", back_populates="storage_area")
+
+# 방 테이블
+class Storage_Room(Base):
+    __tablename__ = "storage_room"
+
+    room_no = Column(Integer, primary_key=True)
+    area_no = Column(Integer, ForeignKey('storage_area.area_no'))
+    room_name = Column(String(50), nullable=False)
+    room_create_date = Column(DateTime, default=MemberUser.get_kst_now)
+    room_modification_date = Column(DateTime, onupdate=MemberUser.get_kst_now)
+
+    storage_area = relationship("Storage_Area", back_populates="rooms")
+    storages = relationship("Storage_Storage", back_populates="room")
 
 # 가구 테이블
 class Storage_Storage(Base):
     __tablename__ = "storage_storage"
 
-    storage_no = Column(Integer, primary_key=True, index=True) 
-    area_no = Column(Integer, ForeignKey('storage_area.area_no'))  
+    storage_no = Column(Integer, primary_key=True, index=True)
+    room_no = Column(Integer, ForeignKey('storage_room.room_no'))
     storage_name = Column(String(50), nullable=False)  
-    storage_column = Column(Integer, nullable=False)  # 열
     storage_row = Column(Integer, nullable=False)  # 행
     storage_location = Column(String(50), nullable=False) 
     storage_description = Column(String(100), nullable=True)
     storage_created_date = Column(DateTime, default=datetime.utcnow)  # 생성 날짜
-
-    detail_storages = relationship("Detail_Storage", back_populates="storage")
-
-
-# 상세 저장 위치 테이블
-class Detail_Storage(Base):
-    __tablename__ = "detail_storage"
-
-    detail_storage_no = Column(Integer, primary_key=True, index=True)
-    area_no = Column(Integer, ForeignKey("storage_area.area_no"), nullable=False)  # 외래 키로 storage_area의 area_no 참조 추가
-    storage_no = Column(Integer, ForeignKey("storage_storage.storage_no"), nullable=False)
-    detail_storage_name = Column(String(50), nullable=False)
-    storage_description = Column(String(100), nullable=True)
-    storage_created_date = Column(DateTime, default=datetime.utcnow)
     storage_modification_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    storage_area = relationship("Storage_Area", back_populates="detail_storages")
-    storage = relationship("Storage_Storage", back_populates="detail_storages")
-    items = relationship("Item", back_populates="detail_storage")
-
+    room = relationship("Storage_Room", back_populates="storages")
+    items = relationship("Item", back_populates="storage")
+    
 # 물건 테이블
 class Item(Base):
     __tablename__ = "item"
 
     item_id = Column(Integer, primary_key=True, index=True)
-    detail_storage_no = Column(Integer, ForeignKey("detail_storage.detail_storage_no"), nullable=False)
+    storage_no = Column(Integer, ForeignKey("storage_storage.storage_no"))
     item_name = Column(String(50), nullable=False)
+    row_num = Column(Integer) 
+    item_imageURL = Column(String(100), nullable=True)
     item_type = Column(Enum("식품", "전자제품", "의류", "사무용품", "생활용품", "기타", name="item_type_enum"), nullable=False)
     item_quantity = Column(Integer, nullable=False, default=1)
     item_Expiration_date = Column(DateTime, nullable=True)
     item_received_date = Column(DateTime, default=datetime.utcnow)
     item_modification_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    detail_storage = relationship("Detail_Storage", back_populates="items")
+    storage = relationship("Storage_Storage", back_populates="items")

@@ -88,10 +88,30 @@ class StorageAreaCreate(BaseModel):
 class StorageAreaUpdate(BaseModel):
     area_name: str
 
+# 방 생성
+class RoomCreate(BaseModel):
+    area_no: int
+    room_name: str
+
+# 방 수정
+class RoomUpdate(BaseModel):
+    room_name: Optional[str] = None
+
+# 방 조회
+class RoomSchema(BaseModel):
+    room_no: int
+    area_no: int
+    room_name: str
+    room_create_date: datetime
+    room_modification_date: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
 
 # 가구 생성
 class StorageCreate(BaseModel):
-    area_no: int
+    room_no: int
     storage_name: str
     storage_column: int
     storage_row: int
@@ -109,7 +129,7 @@ class StorageUpdate(BaseModel):
 # 가구 조회
 class Storage(BaseModel):
     storage_no: int
-    area_no: int
+    room_no: int
     storage_name: str
     storage_column: int
     storage_row: int
@@ -120,17 +140,6 @@ class Storage(BaseModel):
 
     class Config:
         from_attributes = True
-
-# 상세 저장 위치 추가
-class DetailStorageCreate(BaseModel):
-    storage_no: int
-    detail_storage_name: str
-    storage_description: Optional[str] = None
-
-# 상세 저장 위치 수정
-class DetailStorageUpdate(BaseModel):
-    detail_storage_name: Optional[str] = None
-    storage_description: Optional[str] = None
 
 # 물건 추가
 class ItemCreate(BaseModel):
