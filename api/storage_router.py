@@ -140,7 +140,7 @@ def read_room(
     return room
 
 # 특정 공간의 모든 방 조회
-@router.get("/area/{area_no}/rooms", response_model=List[schema.RoomSchema], summary="특정 공간의 모든 방 조회")
+@router.get("/room/{area_no}/rooms", response_model=List[schema.RoomSchema], summary="특정 공간의 모든 방 조회")
 def read_rooms_by_area(
     area_no: int,
     db: Session = Depends(get_db),
@@ -212,16 +212,17 @@ def create_storage(
     db: Session = Depends(get_db), 
     current_user: schema.User = Depends(auth.get_current_user)
 ):
-    # 해당 공간이 현재 사용자 소유인지 확인
-    user_areas = crud.get_areas_by_user(db, user_no=current_user.user_no)
-    if storage.area_no not in [area.area_no for area in user_areas]:
+    # 해당 방이 현재 사용자 소유의 공간에 있는지 확인
+    user_rooms = crud.get_rooms_by_user(db, user_no=current_user.user_no)  # 사용자가 소유한 모든 방 조회
+    if storage.room_no not in [room.room_no for room in user_rooms]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to add furniture to this area."
+            detail="You do not have permission to add furniture to this room."
         )
+
     db_storage = crud.create_storage(db=db, storage=storage)
     return db_storage
-
+    
 # 가구 조회
 @router.get("/storage/{storage_no}", response_model=schema.Storage, summary="가구 조회")
 def read_storage(
@@ -234,29 +235,30 @@ def read_storage(
     if not db_storage:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Storage not found")
 
-    # 가구가 현재 사용자의 소유 공간에 있는지 확인
-    if db_storage.area_no not in [area.area_no for area in crud.get_areas_by_user(db, user_no=current_user.user_no)]:
+    # 가구가 현재 사용자의 소유 방에 있는지 확인
+    user_rooms = crud.get_rooms_by_user(db, user_no=current_user.user_no)  # 사용자가 소유한 모든 방 조회
+    if db_storage.room_no not in [room.room_no for room in user_rooms]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access this furniture.")
-    
+
     return db_storage
 
-# 특정 공간에 있는 모든 가구 조회
-@router.get("/storage/{area_no}/storages", response_model=List[schema.Storage], summary="특정 공간에 있는 모든 가구 조회")
-def get_storages_by_area(
-    area_no: int, 
+# 특정 방에 있는 모든 가구 조회
+@router.get("/storage/{room_no}/storages", response_model=List[schema.Storage], summary="특정 방에 있는 모든 가구 조회")
+def get_storages_by_room(
+    room_no: int, 
     db: Session = Depends(get_db),
     current_user: schema.User = Depends(auth.get_current_user)
 ):
-    # 특정 공간에 있는 모든 가구 조회
-    storages = crud.get_storages_by_area(db=db, area_no=area_no)
+    # 특정 방에 있는 모든 가구 조회
+    storages = crud.get_storages_by_room(db, room_no)
 
     if not storages:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No storage found for this area.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No storage found for this room.")
 
-    # 해당 공간이 현재 사용자 소유인지 확인
-    user_areas = crud.get_areas_by_user(db, user_no=current_user.user_no)
-    if area_no not in [area.area_no for area in user_areas]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access this area.")
+    # 해당 방이 현재 사용자 소유의 공간에 있는지 확인
+    user_rooms = crud.get_rooms_by_user(db, user_no=current_user.user_no)  # 사용자가 소유한 모든 방 조회
+    if room_no not in [room.room_no for room in user_rooms]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access this room.")
 
     return storages
 
@@ -273,10 +275,11 @@ def update_storage(
     if not db_storage:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Storage not found")
 
-    # 가구가 현재 사용자의 소유 공간에 있는지 확인
-    if db_storage.area_no not in [area.area_no for area in crud.get_areas_by_user(db, user_no=current_user.user_no)]:
+    # 가구가 현재 사용자가 소유한 방에 있는지 확인
+    if db_storage.room_no not in [room.room_no for room in crud.get_rooms_by_user(db, user_no=current_user.user_no)]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to update this furniture.")
     
+    # 가구 수정 로직 호출
     updated_storage = crud.update_storage(db=db, storage_no=storage_no, storage_data=storage)
     return updated_storage
 
@@ -293,20 +296,21 @@ def  delete_storage(
     if not db_storage:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Storage not found")
 
-    # 가구가 현재 사용자의 소유 공간에 있는지 확인
-    if db_storage.area_no not in [area.area_no for area in crud.get_areas_by_user(db, user_no=current_user.user_no)]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to delete this furniture.")
-
+    # 가구가 현재 사용자의 소유 방에 있는지 확인
+    user_rooms = crud.get_rooms_by_user(db, user_no=current_user.user_no)  # 사용자가 소유한 모든 방 조회
+    if db_storage.room_no not in [room.room_no for room in user_rooms]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access this furniture.")
+        
     db_storage = crud.delete_storage(db=db, storage_no=storage_no)
     return db_storage
 
 # 물건 추가
 @router.post("/item", response_model=schema.ItemCreate, summary="물건 추가")
 def create_item(item: schema.ItemCreate, db: Session = Depends(get_db), current_user: schema.User = Depends(auth.get_current_user)):
-    # 해당 상세 저장 위치가 현재 사용자 소유인지 확인
-    detail_storage = crud.get_detail_storage(db=db, detail_storage_no=item.detail_storage_no)
-    if detail_storage.area_no not in [area.area_no for area in crud.get_areas_by_user(db, user_no=current_user.user_no)]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to add items to this detail storage.")
+    # 해당 가구가 현재 사용자 소유인지 확인
+    storage = crud.get_storage(db=db, storage_no=item.storage_no)
+    if storage.room_no not in [room.room_no for room in crud.get_rooms_by_user(db, user_no=current_user.user_no)]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to add items to this storage.")
     
     return crud.create_item(db=db, item=item)
 
@@ -323,11 +327,9 @@ def update_item(
     if not db_item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
 
-    # 물건이 현재 사용자의 소유 공간에 있는지 확인
-    if db_item.detail_storage_no not in [
-        detail_storage.detail_storage_no 
-        for detail_storage in crud.get_all_detail_storages_by_user(db, user_no=current_user.user_no)    
-    ]:
+    # 물건이 현재 사용자의 소유 가구에 있는지 확인
+    storage = crud.get_storage(db=db, storage_no=db_item.storage_no)
+    if storage.room_no not in [room.room_no for room in crud.get_rooms_by_user(db, user_no=current_user.user_no)]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to update this item.")
 
     updated_item = crud.update_item(db=db, item_id=item_id, item_data=item)
@@ -336,16 +338,17 @@ def update_item(
 # 물건 조회
 @router.get("/item/{item_id}", response_model=schema.ItemCreate, summary="물건 조회")
 def read_item(item_id: int, db: Session = Depends(get_db), current_user: schema.User = Depends(auth.get_current_user)):
-    item = crud.get_item(db=db, item_id=item_id)
-    if not item:
+    # 물건이 존재하는지 확인
+    db_item = crud.get_item(db=db, item_id=item_id)
+    if not db_item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
 
-    # 해당 물건이 현재 사용자의 소유 공간에 있는지 확인
-    detail_storage = crud.get_detail_storage(db=db, detail_storage_no=item.detail_storage_no)
-    if detail_storage.area_no not in [area.area_no for area in crud.get_areas_by_user(db, user_no=current_user.user_no)]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access this item.")
-    
-    return item
+    # 물건이 현재 사용자의 소유 가구에 있는지 확인
+    storage = crud.get_storage(db=db, storage_no=db_item.storage_no)
+    if storage.room_no not in [room.room_no for room in crud.get_rooms_by_user(db, user_no=current_user.user_no)]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to update this item.")
+
+    return db_item
 
 # 물건 삭제
 @router.delete("/item/{item_id}", summary="물건 삭제")
@@ -359,8 +362,9 @@ def delete_item(
     if not db_item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
 
-    # 물건이 현재 사용자의 소유 공간에 있는지 확인
-    if db_item.detail_storage.area_no not in [area.area_no for area in crud.get_areas_by_user(db, user_no=current_user.user_no)]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to delete this item.")
+    # 물건이 현재 사용자의 소유 가구에 있는지 확인
+    storage = crud.get_storage(db=db, storage_no=db_item.storage_no)
+    if storage.room_no not in [room.room_no for room in crud.get_rooms_by_user(db, user_no=current_user.user_no)]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to update this item.")
 
     return crud.delete_item(db=db, item_id=item_id)

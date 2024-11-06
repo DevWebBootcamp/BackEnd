@@ -5,6 +5,7 @@ from sqlalchemy import (
     Boolean,
     Text,
     DateTime,   # DB의 테이블 정의에 사용되는 것
+    Date,
     ForeignKey,
     Time,
     Enum,
@@ -118,8 +119,8 @@ class Storage_Storage(Base):
     storage_row = Column(Integer, nullable=False)  # 행
     storage_location = Column(String(50), nullable=False) 
     storage_description = Column(String(100), nullable=True)
-    storage_created_date = Column(DateTime, default=datetime.utcnow)  # 생성 날짜
-    storage_modification_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    storage_created_date = Column(DateTime, default=MemberUser.get_kst_now)  # 생성 날짜
+    storage_modification_date = Column(DateTime, onupdate=MemberUser.get_kst_now)
 
     room = relationship("Storage_Room", back_populates="storages")
     items = relationship("Item", back_populates="storage")
@@ -135,8 +136,8 @@ class Item(Base):
     item_imageURL = Column(String(100), nullable=True)
     item_type = Column(Enum("식품", "전자제품", "의류", "사무용품", "생활용품", "기타", name="item_type_enum"), nullable=False)
     item_quantity = Column(Integer, nullable=False, default=1)
-    item_Expiration_date = Column(DateTime, nullable=True)
-    item_received_date = Column(DateTime, default=datetime.utcnow)
-    item_modification_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    item_Expiration_date = Column(Date, nullable=True)
+    item_received_date = Column(DateTime, default=MemberUser.get_kst_now)
+    item_modification_date = Column(DateTime, onupdate=MemberUser.get_kst_now)
 
     storage = relationship("Storage_Storage", back_populates="items")

@@ -81,14 +81,15 @@ class StorageAreaSchema(BaseModel):
         from_attributes = True
         __dict__ = True
 
-
+# 공간 추가
 class StorageAreaCreate(BaseModel):
     area_name: str
 
+# 공간 수정
 class StorageAreaUpdate(BaseModel):
     area_name: str
 
-# 방 생성
+# 방 추가
 class RoomCreate(BaseModel):
     area_no: int
     room_name: str
@@ -109,11 +110,10 @@ class RoomSchema(BaseModel):
         from_attributes = True
 
 
-# 가구 생성
+# 가구 추가
 class StorageCreate(BaseModel):
     room_no: int
     storage_name: str
-    storage_column: int
     storage_row: int
     storage_location: str
     storage_description: Optional[str] = None
@@ -121,7 +121,6 @@ class StorageCreate(BaseModel):
 # 가구 수정
 class StorageUpdate(BaseModel):
     storage_name: Optional[str] = None
-    storage_column: Optional[int] = None
     storage_row: Optional[int] = None
     storage_location: Optional[str] = None
     storage_description: Optional[str] = None
@@ -131,7 +130,6 @@ class Storage(BaseModel):
     storage_no: int
     room_no: int
     storage_name: str
-    storage_column: int
     storage_row: int
     storage_location: str
     storage_description: Optional[str]
@@ -143,13 +141,19 @@ class Storage(BaseModel):
 
 # 물건 추가
 class ItemCreate(BaseModel):
-    detail_storage_no: int
+    storage_no: int
     item_name: str
     item_type: ItemTypeEnum
     item_quantity: int = Field(..., gt=0)  # 1 이상만 허용
+    row_num: Optional[int] = None  # 행 번호
+    item_imageURL: Optional[str] = None  # 이미지 URL
+    item_Expiration_date: Optional[date] = None
 
 # 물건 수정
 class ItemUpdate(BaseModel):
     item_name: Optional[str] = None
-    item_type: Optional[str] = None
-    item_quantity: Optional[int] = None
+    item_type: Optional[ItemTypeEnum] = None
+    item_quantity: Optional[int] = Field(None, gt=0)
+    row_num: Optional[int] = None
+    item_imageURL: Optional[str] = None 
+    item_Expiration_date: Optional[date] = None

@@ -239,6 +239,17 @@ def get_rooms_by_area(db: Session, area_no: int):
     rooms = db.query(storage_room).filter(storage_room.area_no == area_no).all()
     return rooms
 
+# 사용자가 소유한 모든 방을 반환하는 함수
+def get_rooms_by_user(db: Session, user_no: int):
+    # 사용자가 소유한 모든 공간에서 방을 조회
+    rooms = (
+        db.query(storage_room)
+        .join(storage_area, storage_room.area_no == storage_area.area_no)
+        .filter(storage_area.user_no == user_no)
+        .all()
+    )
+    return rooms
+
 # 방 수정
 def update_room(db: Session, room_no: int, room_data: RoomUpdate):
     room = get_room(db, room_no)
@@ -266,9 +277,8 @@ def delete_room(db: Session, room_no: int):
 # 가구 추가
 def create_storage(db: Session, storage: StorageCreate):
     db_storage = storage_storage(
-        area_no=storage.area_no,
+        room_no=storage.room_no,
         storage_name=storage.storage_name,
-        storage_column=storage.storage_column,
         storage_row=storage.storage_row,
         storage_location=storage.storage_location,
         storage_description=storage.storage_description,
@@ -289,11 +299,11 @@ def get_storage(db: Session, storage_no: int):
     
     return storage
 
-# 특정 공간에 있는 모든 가구 조회
-def get_storages_by_area(db: Session, area_no: int):
-    # 특정 공간에 있는 모든 가구 조회
-    storages = db.query(storage_storage).filter(storage_storage.area_no == area_no).all()
+# 특정 방에 있는 모든 가구 조회
+def get_storages_by_room(db: Session, room_no: int):
+    storages = db.query(storage_storage).filter(storage_storage.room_no == room_no).all()
     return storages
+
 
 
 # 가구 수정
@@ -302,8 +312,10 @@ def update_storage(db: Session, storage_no: int, storage_data: StorageUpdate):
     if not db_storage:
         raise HTTPException(status_code=404, detail="Storage not found")
     
+    # 필드들 중 전달된 값만 업데이트
     for key, value in storage_data.dict(exclude_unset=True).items():
         setattr(db_storage, key, value)
+        
     db.commit()
     db.refresh(db_storage)
     return db_storage
@@ -320,17 +332,20 @@ def delete_storage(db: Session, storage_no: int):
 
 # 물건 추가
 def create_item(db: Session, item: ItemCreate):
-    # 먼저 detail_storage_no가 존재하는지 확인
-    detail_storage_instance = db.query(detail_storage).filter(detail_storage.detail_storage_no == item.detail_storage_no).first()
-    if not detail_storage_instance:
-        raise HTTPException(status_code=404, detail="Detail storage not found")
+    # 먼저 storage_no가 존재하는지 확인
+    storage_instance = db.query(storage_storage).filter(storage_storage.storage_no == item.storage_no).first()
+    if not storage_instance:
+        raise HTTPException(status_code=404, detail="Storage not found")
     
     # db_item 객체 생성
     db_item_instance = db_item(
-        detail_storage_no=item.detail_storage_no,
+        storage_no=item.storage_no,
         item_name=item.item_name,
+        row_num=item.row_num,
+        item_imageURL=item.item_imageURL,
         item_type=item.item_type,
         item_quantity=item.item_quantity,
+        item_Expiration_date=item.item_Expiration_date,
     )
     db.add(db_item_instance)
     db.commit()
