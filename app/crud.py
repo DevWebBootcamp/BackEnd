@@ -25,10 +25,7 @@ import os
 from typing import Optional
 from fastapi import UploadFile
 from datetime import datetime
-
-# 이미지 파일을 저장할 경로
-PROFILE_IMAGE_DIR = "images/profile/"
-ITEM_IMAGE_DIR = "images/items/"
+from app.config import ITEM_IMAGE_DIR, PROFILE_IMAGE_DIR
 
 def get_user_by_no(db: Session, user_no: int):
     return db.query(member_user).filter(member_user.user_no == user_no).first()

@@ -11,6 +11,7 @@ import os, uuid, shutil
 from typing import Optional
 from datetime import date
 from fastapi.responses import Response
+from app.config import ITEM_IMAGE_DIR
 
 router = APIRouter()
 
@@ -308,6 +309,7 @@ def  delete_storage(
     db_storage = crud.delete_storage(db=db, storage_no=storage_no)
     return db_storage
 
+
 # 물건 추가
 @router.post("/item", summary="물건 추가")
 async def create_item_route(
@@ -328,9 +330,10 @@ async def create_item_route(
 
     # 이미지 저장
     unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
-    image_path = os.path.join("images/items", unique_filename)
+    image_path = os.path.join(ITEM_IMAGE_DIR, unique_filename)
     
-    os.makedirs("images/items", exist_ok=True)  # 경로가 없으면 생성
+    # 디렉토리가 없으면 생성
+    os.makedirs(ITEM_IMAGE_DIR, exist_ok=True)
     with open(image_path, "wb") as image_file:
         shutil.copyfileobj(file.file, image_file)
     
