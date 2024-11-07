@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 import app.crud as crud
 import app.schema as schema
@@ -7,6 +7,10 @@ from app.database import SessionLocal
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import List
 from sqlalchemy.exc import IntegrityError
+import os, uuid, shutil
+from typing import Optional
+from datetime import date
+from fastapi.responses import Response
 
 router = APIRouter()
 
@@ -305,14 +309,46 @@ def  delete_storage(
     return db_storage
 
 # 물건 추가
-@router.post("/item", response_model=schema.ItemCreate, summary="물건 추가")
-def create_item(item: schema.ItemCreate, db: Session = Depends(get_db), current_user: schema.User = Depends(auth.get_current_user)):
+@router.post("/item", summary="물건 추가")
+async def create_item_route(
+    storage_no: int = Form(...),
+    item_name: str = Form(...),
+    item_type: str = Form(...),
+    item_quantity: int = Form(...),
+    row_num: Optional[int] = Form(None),
+    item_Expiration_date: Optional[date] = Form(None),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: schema.User = Depends(auth.get_current_user)
+):
     # 해당 가구가 현재 사용자 소유인지 확인
-    storage = crud.get_storage(db=db, storage_no=item.storage_no)
+    storage = crud.get_storage(db=db, storage_no=storage_no)
     if storage.room_no not in [room.room_no for room in crud.get_rooms_by_user(db, user_no=current_user.user_no)]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to add items to this storage.")
+        raise HTTPException(status_code=403, detail="You do not have permission to add items to this storage.")
+
+    # 이미지 저장
+    unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
+    image_path = os.path.join("images/items", unique_filename)
     
-    return crud.create_item(db=db, item=item)
+    os.makedirs("images/items", exist_ok=True)  # 경로가 없으면 생성
+    with open(image_path, "wb") as image_file:
+        shutil.copyfileobj(file.file, image_file)
+    
+    image_url = f"/images/items/{unique_filename}"
+    
+    # ItemCreate 스키마 생성
+    item_data = schema.ItemCreate(
+        storage_no=storage_no,
+        item_name=item_name,
+        row_num=row_num,
+        item_type=item_type,
+        item_quantity=item_quantity,
+        item_Expiration_date=item_Expiration_date
+    )
+
+    # 물건 추가
+    new_item = crud.create_item(db=db, item=item_data, image_url=image_url)
+    return {"msg": "Item created successfully", "item_id": new_item.item_id}
 
 # 물건 수정
 @router.put("/item/{item_id}", response_model=schema.ItemCreate, summary="물건 수정")
@@ -349,6 +385,24 @@ def read_item(item_id: int, db: Session = Depends(get_db), current_user: schema.
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to update this item.")
 
     return db_item
+
+# 물건 이미지 조회
+@router.get("/item-image/{item_id}", summary="물건 이미지 조회")
+def get_item_image(item_id: int, db: Session = Depends(get_db)):
+    image_path = crud.get_item_image_url(db=db, item_id=item_id)
+
+    # 이미지 파일이 실제로 존재하는지 확인
+    if not os.path.exists(image_path):
+        raise HTTPException(status_code=404, detail="Image file not found")
+
+    with open(image_path, "rb") as image_file:
+        image_data = image_file.read()
+
+    # 파일 확장자에 따라 media_type 설정
+    file_extension = os.path.splitext(image_path)[1].lower()
+    media_type = "image/jpeg" if file_extension in [".jpg", ".jpeg"] else "image/png"
+
+    return Response(content=image_data, media_type=media_type)
 
 # 물건 삭제
 @router.delete("/item/{item_id}", summary="물건 삭제")

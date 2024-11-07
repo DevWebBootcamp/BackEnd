@@ -5,9 +5,8 @@ from app.database import SessionLocal
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Optional
 from fastapi.responses import Response
-from app.config import IMAGE_UPLOAD_DIR  # 이미지 경로 설정
+from app.config import PROFILE_IMAGE_DIR  # 이미지 경로 설정
 import os, uuid, shutil
-from fastapi.responses import FileResponse
 import mimetypes
 import logging
 
@@ -125,7 +124,7 @@ def profile_read_route(
 
     return user_info
 
-# 이미지 조회
+# 프로필 이미지 조회
 @router.get("/profile-image/{user_no}", summary="프로필 이미지 조회")
 def get_profile_image(user_no: int, db: Session = Depends(get_db)):
     profile = crud.get_profile_by_user_no(db, user_no=user_no)

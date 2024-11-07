@@ -27,7 +27,8 @@ from fastapi import UploadFile
 from datetime import datetime
 
 # 이미지 파일을 저장할 경로
-IMAGE_DIR = "images/profile/"
+PROFILE_IMAGE_DIR = "images/profile/"
+ITEM_IMAGE_DIR = "images/items/"
 
 def get_user_by_no(db: Session, user_no: int):
     return db.query(member_user).filter(member_user.user_no == user_no).first()
@@ -331,7 +332,7 @@ def delete_storage(db: Session, storage_no: int):
     return {"msg": "Storage deleted successfully"}
 
 # 물건 추가
-def create_item(db: Session, item: ItemCreate):
+def create_item(db: Session, item: ItemCreate, image_url: str):
     # 먼저 storage_no가 존재하는지 확인
     storage_instance = db.query(storage_storage).filter(storage_storage.storage_no == item.storage_no).first()
     if not storage_instance:
@@ -342,11 +343,12 @@ def create_item(db: Session, item: ItemCreate):
         storage_no=item.storage_no,
         item_name=item.item_name,
         row_num=item.row_num,
-        item_imageURL=item.item_imageURL,
+        item_imageURL=image_url,  # 이미지 URL 저장
         item_type=item.item_type,
         item_quantity=item.item_quantity,
         item_Expiration_date=item.item_Expiration_date,
     )
+
     db.add(db_item_instance)
     db.commit()
     db.refresh(db_item_instance)
@@ -358,6 +360,14 @@ def get_item(db: Session, item_id: int):
     if not db_item_instance:
         raise HTTPException(status_code=404, detail="Item not found")
     return db_item_instance
+
+
+# 물건 이미지 URL 조회
+def get_item_image_url(db: Session, item_id: int) -> str:
+    db_item_instance = get_item(db, item_id)
+    if not db_item_instance or not db_item_instance.item_imageURL:
+        raise HTTPException(status_code=404, detail="Image not found for this item")
+    return os.path.join(ITEM_IMAGE_DIR, os.path.basename(db_item_instance.item_imageURL))
 
 # 물건 수정
 def update_item(db: Session, item_id: int, item_data: ItemUpdate):
