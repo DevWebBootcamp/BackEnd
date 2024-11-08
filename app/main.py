@@ -19,10 +19,10 @@ origins = [
     "http://127.0.0.1:3000"      # IP 형식으로 명시 가능
 ]
 
-# CORS 미들웨어 추가, 모든 출처 허용
+# CORS 미들웨어 설정 개선
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 모든 출처에서 접근 허용
+    allow_origins=["http://localhost:3000"],  # 프론트엔드의 정확한 주소를 명시
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
