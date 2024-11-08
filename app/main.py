@@ -22,12 +22,14 @@ origins = [
 # CORS 미들웨어 설정 개선
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # 프론트엔드의 정확한 주소를 명시
+    allow_origins=[
+        "http://localhost:3000",  # 개발 환경용
+        "https://port-0-teamproject-2024-2-am952nlt496sho.sel5.cloudtype.app",  # Cloudtype 배포 주소
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # 프로필 이미지 static 경로 등록
 app.mount("/images/profile", StaticFiles(directory=PROFILE_IMAGE_DIR), name="profile_images")
 
