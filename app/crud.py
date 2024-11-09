@@ -358,6 +358,10 @@ def get_item(db: Session, item_id: int):
         raise HTTPException(status_code=404, detail="Item not found")
     return db_item_instance
 
+# 특정 가구에 포함된 물건 조회
+def get_items_by_storage(db: Session, storage_no: int):
+    return db.query(db_item).filter(db_item.storage_no == storage_no).all()
+
 
 # 물건 이미지 URL 조회
 def get_item_image_url(db: Session, item_id: int) -> str:
@@ -383,7 +387,14 @@ def delete_item(db: Session, item_id: int):
     db_item_instance = get_item(db, item_id)
     if not db_item_instance:
         raise HTTPException(status_code=404, detail="Item not found")
-    
+
+    # 이미지 파일 경로가 존재하면 파일 삭제
+    if db_item_instance.item_imageURL:
+        image_path = os.path.join(ITEM_IMAGE_DIR, os.path.basename(db_item_instance.item_imageURL))
+        if os.path.exists(image_path):
+            os.remove(image_path)  # 이미지 파일 삭제
+
+    # 데이터베이스에서 물건 삭제
     db.delete(db_item_instance)
     db.commit()
-    return {"msg": "Item deleted successfully"}
+    return {"msg": "Item and its image deleted successfully"}

@@ -50,9 +50,7 @@ def load_user_storage_space(
         raise HTTPException(status_code=403, detail="You do not have permission to access this storage space.")
     
     spaces = crud.load_user_storage_space(db, user_no=user_no)
-
-    # Pydantic 모델로 변환
-    return [schema.StorageAreaSchema.model_validate(space) for space in spaces]
+    return [schema.StorageAreaSchema.model_validate(space) for space in spaces] if spaces else []
 
 
 # 특정 저장 공간 조회
@@ -100,6 +98,14 @@ def delete_user_storage_space(
     # 현재 로그인한 사용자만 자신의 저장 공간을 삭제할 수 있도록 제한
     if user_no != current_user.user_no:
         raise HTTPException(status_code=403, detail="You do not have permission to delete this storage space.")
+    
+    # 공간에 방이 존재하는지 확인
+    rooms = crud.get_rooms_by_area(db=db, area_no=area_no)
+    if rooms:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete storage area because rooms are associated with it. Please remove rooms first."
+        )
     
     return crud.delete_storage_space(db=db, user_no=user_no, area_no=area_no)
 
@@ -157,10 +163,8 @@ def read_rooms_by_area(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access rooms in this area.")
 
     rooms = crud.get_rooms_by_area(db=db, area_no=area_no)
-    if not rooms:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No rooms found for this area")
 
-    return rooms
+    return rooms if rooms else []
 
 # 방 수정
 @router.put("/room/{room_no}", response_model=schema.RoomSchema, summary="방 수정")
@@ -198,17 +202,15 @@ def delete_room(
     if room.area_no not in [area.area_no for area in user_areas]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to delete this room.")
 
-    try:
-        # 방 삭제 시도
-        return crud.delete_room(db=db, room_no=room_no)
-
-    except IntegrityError:
-        # 무결성 제약 조건 위반 시 에러 메시지 반환
-        db.rollback()  # 트랜잭션 롤백
+    # 방에 가구가 존재하는지 확인
+    storages = crud.get_storages_by_room(db=db, room_no=room_no)
+    if storages:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete room because items are associated with it. Please remove items first."
+            detail="Cannot delete room because furniture is associated with it. Please remove furniture first."
         )
+
+    return crud.delete_room(db=db, room_no=room_no)
 
 # 가구 추가
 @router.post("/storage/", response_model=schema.Storage, summary="가구 추가")
@@ -257,15 +259,12 @@ def get_storages_by_room(
     # 특정 방에 있는 모든 가구 조회
     storages = crud.get_storages_by_room(db, room_no)
 
-    if not storages:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No storage found for this room.")
-
     # 해당 방이 현재 사용자 소유의 공간에 있는지 확인
     user_rooms = crud.get_rooms_by_user(db, user_no=current_user.user_no)  # 사용자가 소유한 모든 방 조회
     if room_no not in [room.room_no for room in user_rooms]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access this room.")
 
-    return storages
+    return storages if storages else []
 
 # 가구 수정
 @router.put("/storage/{storage_no}", response_model=schema.Storage, summary="가구 수정")
@@ -301,13 +300,15 @@ def  delete_storage(
     if not db_storage:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Storage not found")
 
-    # 가구가 현재 사용자의 소유 방에 있는지 확인
-    user_rooms = crud.get_rooms_by_user(db, user_no=current_user.user_no)  # 사용자가 소유한 모든 방 조회
-    if db_storage.room_no not in [room.room_no for room in user_rooms]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access this furniture.")
-        
-    db_storage = crud.delete_storage(db=db, storage_no=storage_no)
-    return db_storage
+    # 가구에 물건이 존재하는지 확인
+    items = crud.get_items_by_storage(db=db, storage_no=storage_no)
+    if items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete storage because items are associated with it. Please remove items first."
+        )
+
+    return crud.delete_storage(db=db, storage_no=storage_no)
 
 
 # 물건 추가
