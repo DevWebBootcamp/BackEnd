@@ -72,15 +72,21 @@ def authenticate_user(db: Session, user_email: str, password: str):
     return None
 
 # 이미지 저장
-def save_image(file: UploadFile, directory: str) -> str:
+def save_image(file: Optional[UploadFile], directory: str) -> Optional[str]:
     """업로드된 파일을 지정된 디렉토리에 저장하고, 저장된 파일의 URL을 반환."""
+    if not file:
+        return None
+
+    # 디렉토리가 존재하지 않으면 생성
+    os.makedirs(directory, exist_ok=True)
+
     unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
     image_path = os.path.join(directory, unique_filename)
     
     with open(image_path, "wb") as image_file:
         shutil.copyfileobj(file.file, image_file)
     
-    return f"/images/{os.path.basename(directory)}/{unique_filename}"
+    return f"/images/{os.path.basename(directory)}/{unique_filename}"  # 이미지 URL 반환
 
 # 프로필 등록
 def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate, file: Optional[UploadFile] = None):
