@@ -94,21 +94,9 @@ async def profile_create_route(
     if existing_profile:
         raise HTTPException(status_code=400, detail="Profile already exists for this user.")
 
-    # 이미지 저장 (이미지가 있는 경우에만 처리)
-    image_url = None
-    if file:
-        unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
-        image_path = os.path.join(PROFILE_IMAGE_DIR, unique_filename)
-        
-        with open(image_path, "wb") as image_file:
-            shutil.copyfileobj(file.file, image_file)
-        
-        image_url = f"/images/profile/{unique_filename}"
-
-    # ProfileCreate 스키마를 사용하여 닉네임 및 이미지 URL을 전달
     profile_data = schema.ProfileCreate(nickname=nickname)
+    profile = crud.create_user_profile(db=db, user_no=user_no, profile_data=profile_data, file=file)
     
-    profile = crud.create_user_profile(db=db, user_no=user_no, profile_data=profile_data, image_url=image_url)
     return {"msg": "Profile created successfully", "user_no": user_no}
 
 # 사용자 정보 + 프로필 조회
@@ -163,18 +151,8 @@ async def profile_update_route(
     if user_no != current_user.user_no:
         raise HTTPException(status_code=403, detail="You do not have permission to update this profile.")
 
-    image_url = None
-    if file:
-        unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
-        image_path = os.path.join(PROFILE_IMAGE_DIR, unique_filename)
-
-        with open(image_path, "wb") as image_file:
-            shutil.copyfileobj(file.file, image_file)
-        
-        image_url = f"/images/profile/{unique_filename}"
-
     profile_data = schema.ProfileUpdate(nickname=nickname)
-    updated_profile = crud.profile_update(db=db, user_no=user_no, profile_data=profile_data, image_url=image_url)
+    updated_profile = crud.profile_update(db=db, user_no=user_no, profile_data=profile_data, file=file)
     
     return {"msg": "Profile updated successfully", "profile": updated_profile}
 
