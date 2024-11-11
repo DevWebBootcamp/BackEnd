@@ -115,15 +115,11 @@ class StorageCreate(BaseModel):
     room_no: int
     storage_name: str
     storage_row: int
-    storage_location: str
-    storage_description: Optional[str] = None
 
 # 가구 수정
 class StorageUpdate(BaseModel):
     storage_name: Optional[str] = None
     storage_row: Optional[int] = None
-    storage_location: Optional[str] = None
-    storage_description: Optional[str] = None
 
 # 가구 조회
 class Storage(BaseModel):
@@ -131,8 +127,6 @@ class Storage(BaseModel):
     room_no: int
     storage_name: str
     storage_row: int
-    storage_location: str
-    storage_description: Optional[str]
     storage_created_date: datetime
     storage_modification_date: Optional[datetime] = None
 

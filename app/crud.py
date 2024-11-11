@@ -281,8 +281,6 @@ def create_storage(db: Session, storage: StorageCreate):
         room_no=storage.room_no,
         storage_name=storage.storage_name,
         storage_row=storage.storage_row,
-        storage_location=storage.storage_location,
-        storage_description=storage.storage_description,
     )
     db.add(db_storage)
     db.commit()
