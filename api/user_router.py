@@ -96,7 +96,7 @@ async def profile_create_route(
 
     # 이미지 저장
     unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
-    image_path = os.path.join(IMAGE_UPLOAD_DIR, unique_filename)
+    image_path = os.path.join(PROFILE_IMAGE_DIR, unique_filename)
     
     with open(image_path, "wb") as image_file:
         shutil.copyfileobj(file.file, image_file)
@@ -131,7 +131,7 @@ def get_profile_image(user_no: int, db: Session = Depends(get_db)):
     if not profile or not profile.image_url:
         raise HTTPException(status_code=404, detail="Image file not found")
 
-    image_path = os.path.join(IMAGE_UPLOAD_DIR, os.path.basename(profile.image_url))
+    image_path = os.path.join(PROFILE_IMAGE_DIR, os.path.basename(profile.image_url))
 
     # 이미지 파일이 실제로 존재하는지 확인
     if not os.path.exists(image_path):
@@ -161,7 +161,7 @@ async def profile_update_route(
     image_url = None
     if file:
         unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
-        image_path = os.path.join(IMAGE_UPLOAD_DIR, unique_filename)
+        image_path = os.path.join(PROFILE_IMAGE_DIR, unique_filename)
 
         with open(image_path, "wb") as image_file:
             shutil.copyfileobj(file.file, image_file)
