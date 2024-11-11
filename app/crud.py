@@ -102,17 +102,18 @@ def get_user_info_with_profile(db: Session, user_no: int) -> UserInfo:
     user = get_user_by_no(db, user_no)
     profile = get_profile_by_user_no(db, user_no)
 
-    if not user or not profile:
-        raise HTTPException(status_code=404, detail="User or profile not found")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
+    # 프로필 정보가 없을 경우 profile 관련 필드를 None으로 설정
     return UserInfo(
         email=user.email,
         user_name=user.user_name,
-        nickname=profile.nickname,
+        nickname=profile.nickname if profile else None,
         cell_phone=user.cell_phone,
         birthday=user.birthday,
         gender=user.gender,
-         image_url=f"/images/profile/{os.path.basename(profile.image_url)}" if profile.image_url else None
+        image_url=f"/images/profile/{os.path.basename(profile.image_url)}" if profile and profile.image_url else None
     )
 
 # 프로필 수정

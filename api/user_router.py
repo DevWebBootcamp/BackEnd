@@ -119,8 +119,9 @@ def profile_read_route(
         raise HTTPException(status_code=403, detail="You do not have permission to view this profile.")
 
     user_info = crud.get_user_info_with_profile(db=db, user_no=user_no)
+    
     if not user_info:
-        raise HTTPException(status_code=404, detail="User or Profile not found")
+        raise HTTPException(status_code=404, detail="User not found")
 
     return user_info
 
