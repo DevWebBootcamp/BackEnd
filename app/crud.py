@@ -359,10 +359,9 @@ def get_item(db: Session, item_id: int):
         raise HTTPException(status_code=404, detail="Item not found")
     return db_item_instance
 
-# 특정 가구에 포함된 물건 조회
+# 특정 가구에 포함된 모든 물건 조회
 def get_items_by_storage(db: Session, storage_no: int):
     return db.query(db_item).filter(db_item.storage_no == storage_no).all()
-
 
 # 물건 이미지 URL 조회
 def get_item_image_url(db: Session, item_id: int) -> str:

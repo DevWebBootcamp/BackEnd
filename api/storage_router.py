@@ -110,13 +110,12 @@ def delete_user_storage_space(
     return crud.delete_storage_space(db=db, user_no=user_no, area_no=area_no)
 
 # 방 추가
-@router.post("/room", response_model=schema.RoomCreate, summary="방 추가")
+@router.post("/room", response_model=schema.RoomSchema, summary="방 추가")
 def create_room(
     room: schema.RoomCreate,
     db: Session = Depends(get_db),
     current_user: schema.User = Depends(auth.get_current_user)
 ):
-
     # 사용자가 소유한 공간에 방을 추가할 수 있는지 확인
     user_areas = crud.get_areas_by_user(db, user_no=current_user.user_no)
     if room.area_no not in [area.area_no for area in user_areas]:
@@ -126,11 +125,14 @@ def create_room(
         )
 
     # 방 생성
-    return crud.create_room(
+    new_room = crud.create_room(
         db=db,
         area_no=room.area_no,
         room_name=room.room_name
     )
+
+    # 방 전체 정보를 반환 (room_no 포함)
+    return new_room
 
 # 방 조회
 @router.get("/room/{room_no}", response_model=schema.RoomSchema, summary="방 조회")
@@ -408,6 +410,27 @@ def get_item_image(item_id: int, db: Session = Depends(get_db)):
     media_type = "image/jpeg" if file_extension in [".jpg", ".jpeg"] else "image/png"
 
     return Response(content=image_data, media_type=media_type)
+
+# 특정 가구에 있는 모든 물건 조회
+@router.get("/storage/{storage_no}/items", response_model=List[schema.ItemSchema], summary="특정 가구에 있는 모든 물건 조회")
+def get_items_by_storage_route(
+    storage_no: int,
+    db: Session = Depends(get_db),
+    current_user: schema.User = Depends(auth.get_current_user)
+):
+    # 현재 사용자가 소유한 가구인지 확인
+    storage = crud.get_storage(db=db, storage_no=storage_no)
+    if not storage:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Storage not found")
+
+    # 가구가 현재 사용자의 소유 공간에 있는지 확인
+    user_rooms = crud.get_rooms_by_user(db, user_no=current_user.user_no)
+    if storage.room_no not in [room.room_no for room in user_rooms]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access items in this storage.")
+    
+    # 특정 가구에 있는 모든 물건 조회
+    items = crud.get_items_by_storage(db=db, storage_no=storage_no)
+    return items if items else []
 
 # 물건 삭제
 @router.delete("/item/{item_id}", summary="물건 삭제")

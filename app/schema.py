@@ -151,3 +151,17 @@ class ItemUpdate(BaseModel):
     row_num: Optional[int] = None
     item_imageURL: Optional[str] = None 
     item_Expiration_date: Optional[date] = None
+
+# 물건 조회
+class ItemSchema(BaseModel):
+    item_id: int
+    storage_no: int
+    item_name: str
+    item_type: str
+    item_quantity: int
+    row_num: Optional[int] = None
+    item_Expiration_date: Optional[date] = None
+    item_imageURL: Optional[str] = None
+
+    class Config:
+        orm_mode = True
