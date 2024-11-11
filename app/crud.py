@@ -72,19 +72,21 @@ def authenticate_user(db: Session, user_email: str, password: str):
 
 
 # 프로필 등록
-def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate, image_url: str):
+def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate, image_url: Optional[str] = None):
     user = get_user_by_no(db, user_no=user_no)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # 기존 프로필이 있는지 확인
     existing_profile = get_profile_by_user_no(db=db, user_no=user_no)
     if existing_profile:
         raise HTTPException(status_code=400, detail="Profile already exists for this user.")
 
+    # 닉네임과 이미지 URL이 제공되지 않을 경우 None으로 설정
     profile = member_profile(
         user_no=user_no,
-        nickname=profile_data.nickname,
-        image_url=image_url,  # 이미지 URL 저장
+        nickname=profile_data.nickname if profile_data.nickname else None,
+        image_url=image_url if image_url else None,  # 이미지 URL이 있을 경우 저장, 없으면 None
         create_date=member_user.get_kst_now()
     )
 
@@ -92,7 +94,7 @@ def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate, 
     db.commit()
     db.refresh(profile)
     return profile
-    
+
 # 프로필 조회 // 이미지 조회에 필요
 def get_profile_by_user_no(db: Session, user_no: int):
     return db.query(member_profile).filter(member_profile.user_no == user_no).first()
@@ -330,8 +332,8 @@ def delete_storage(db: Session, storage_no: int):
     return {"msg": "Storage deleted successfully"}
 
 # 물건 추가
-def create_item(db: Session, item: ItemCreate, image_url: str):
-    # 먼저 storage_no가 존재하는지 확인
+def create_item(db: Session, item: ItemCreate, image_url: Optional[str] = None):
+    # storage_no가 존재하는지 확인
     storage_instance = db.query(storage_storage).filter(storage_storage.storage_no == item.storage_no).first()
     if not storage_instance:
         raise HTTPException(status_code=404, detail="Storage not found")
@@ -341,7 +343,7 @@ def create_item(db: Session, item: ItemCreate, image_url: str):
         storage_no=item.storage_no,
         item_name=item.item_name,
         row_num=item.row_num,
-        item_imageURL=image_url,  # 이미지 URL 저장
+        item_imageURL=image_url if image_url else None,  # 이미지 URL이 있으면 저장
         item_type=item.item_type,
         item_quantity=item.item_quantity,
         item_Expiration_date=item.item_Expiration_date,

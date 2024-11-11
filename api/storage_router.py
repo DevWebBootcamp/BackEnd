@@ -320,7 +320,7 @@ async def create_item_route(
     item_quantity: int = Form(...),
     row_num: Optional[int] = Form(None),
     item_Expiration_date: Optional[date] = Form(None),
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),  # 이미지 파일은 선택 사항으로 변경
     db: Session = Depends(get_db),
     current_user: schema.User = Depends(auth.get_current_user)
 ):
@@ -329,16 +329,17 @@ async def create_item_route(
     if storage.room_no not in [room.room_no for room in crud.get_rooms_by_user(db, user_no=current_user.user_no)]:
         raise HTTPException(status_code=403, detail="You do not have permission to add items to this storage.")
 
-    # 이미지 저장
-    unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
-    image_path = os.path.join(ITEM_IMAGE_DIR, unique_filename)
-    
-    # 디렉토리가 없으면 생성
-    os.makedirs(ITEM_IMAGE_DIR, exist_ok=True)
-    with open(image_path, "wb") as image_file:
-        shutil.copyfileobj(file.file, image_file)
-    
-    image_url = f"/images/items/{unique_filename}"
+    # 이미지가 있을 경우 저장
+    image_url = None
+    if file:
+        unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
+        image_path = os.path.join(ITEM_IMAGE_DIR, unique_filename)
+        
+        os.makedirs(ITEM_IMAGE_DIR, exist_ok=True)
+        with open(image_path, "wb") as image_file:
+            shutil.copyfileobj(file.file, image_file)
+        
+        image_url = f"/images/items/{unique_filename}"
     
     # ItemCreate 스키마 생성
     item_data = schema.ItemCreate(

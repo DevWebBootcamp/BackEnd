@@ -80,7 +80,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
 async def profile_create_route(
     user_no: int,
     nickname: Optional[str] = Form(None),
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: schema.User = Depends(auth.get_current_user)
 ):
@@ -94,14 +94,18 @@ async def profile_create_route(
     if existing_profile:
         raise HTTPException(status_code=400, detail="Profile already exists for this user.")
 
-    # 이미지 저장
-    unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
-    image_path = os.path.join(PROFILE_IMAGE_DIR, unique_filename)
-    
-    with open(image_path, "wb") as image_file:
-        shutil.copyfileobj(file.file, image_file)
-    
-    image_url = f"/images/profile/{unique_filename}"
+    # 이미지 저장 (이미지가 있는 경우에만 처리)
+    image_url = None
+    if file:
+        unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
+        image_path = os.path.join(PROFILE_IMAGE_DIR, unique_filename)
+        
+        with open(image_path, "wb") as image_file:
+            shutil.copyfileobj(file.file, image_file)
+        
+        image_url = f"/images/profile/{unique_filename}"
+
+    # ProfileCreate 스키마를 사용하여 닉네임 및 이미지 URL을 전달
     profile_data = schema.ProfileCreate(nickname=nickname)
     
     profile = crud.create_user_profile(db=db, user_no=user_no, profile_data=profile_data, image_url=image_url)
@@ -119,7 +123,7 @@ def profile_read_route(
         raise HTTPException(status_code=403, detail="You do not have permission to view this profile.")
 
     user_info = crud.get_user_info_with_profile(db=db, user_no=user_no)
-    
+
     if not user_info:
         raise HTTPException(status_code=404, detail="User not found")
 
