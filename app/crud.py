@@ -398,3 +398,35 @@ def delete_item(db: Session, item_id: int):
     db.delete(db_item_instance)
     db.commit()
     return {"msg": "Item and its image deleted successfully"}
+
+# 초성 분리 및 검색을 위한 코드 예시
+CHO = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"]
+
+def get_initial(item_name: str):
+    # 주어진 문자열에서 초성만 추출
+    initials = ""
+    for char in item_name:
+        if '가' <= char <= '힣':  # 한글인지 확인
+            char_code = ord(char) - ord('가')
+            initial_index = char_code // 588
+            initials += CHO[initial_index]
+        else:
+            initials += char  # 한글이 아니면 그대로 추가
+    print('initials: ', initials)
+    return initials
+
+def get_item_list(db: Session, item_name: str):
+    # 입력값의 초성을 가져옴
+    item_initial = get_initial(item_name)
+    
+    # 한 글자 자음으로 입력된 경우, 해당 자음으로 시작하는 모든 아이템 검색
+    if len(item_name) == 1 and item_name in CHO:
+        items = db.query(db_item).filter(db_item.item_name.ilike(f"{item_name}%")).all()
+    else:
+        # 부분 일치하는 결과 검색
+        items = db.query(db_item).filter(db_item.item_name.ilike(f"%{item_name}%")).all()
+
+    # 초성 필터링을 통해 해당하는 아이템만 가져옴
+    filtered_items = [item for item in items if item_initial in get_initial(item.item_name)]
+    
+    return filtered_items

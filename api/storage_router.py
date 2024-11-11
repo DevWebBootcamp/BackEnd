@@ -426,3 +426,30 @@ def delete_item(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to update this item.")
 
     return crud.delete_item(db=db, item_id=item_id)
+
+# 물건 자동완성 검색
+@router.get("/autocomplete", response_model=List[schema.ItemCreate], summary="물건 자동완성 검색")
+def autocomplete_item(item_name: str, db: Session = Depends(get_db), current_user: schema.User = Depends(auth.get_current_user)):
+    print("item_name1: ", item_name)
+    # 아이템 이름에 부분 일치하는 결과 검색
+    db_items = crud.get_item_list(db=db, item_name=item_name)
+    print("item_name2: ", item_name)
+    if not db_items:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+    
+    # 사용자 소유 방 번호 목록을 DB에서 직접 쿼리
+    user_rooms = crud.get_rooms_by_user(db, user_no=current_user.user_no)
+    user_room_nos = [room.room_no for room in user_rooms]
+
+    # 접근 가능한 아이템 필터링
+    accessible_items = []
+    for item in db_items:
+        storage = crud.get_storage(db=db, storage_no=item.storage_no)
+        if storage and storage.room_no in user_room_nos:
+            accessible_items.append(item)
+
+    if not accessible_items:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to view these items.")
+    
+    return accessible_items
+
