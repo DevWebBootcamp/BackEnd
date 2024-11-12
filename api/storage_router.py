@@ -322,7 +322,7 @@ async def create_item_route(
     item_quantity: int = Form(...),
     row_num: Optional[int] = Form(None),
     item_Expiration_date: Optional[date] = Form(None),
-    file: Optional[UploadFile] = File(None),  # 이미지 파일은 선택 사항으로 변경
+    file: Optional[UploadFile] = File(None),  # 이미지 파일은 선택 사항
     db: Session = Depends(get_db),
     current_user: schema.User = Depends(auth.get_current_user)
 ):
@@ -331,19 +331,7 @@ async def create_item_route(
     if storage.room_no not in [room.room_no for room in crud.get_rooms_by_user(db, user_no=current_user.user_no)]:
         raise HTTPException(status_code=403, detail="You do not have permission to add items to this storage.")
 
-    # 이미지가 있을 경우 저장
-    image_url = None
-    if file:
-        unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
-        image_path = os.path.join(ITEM_IMAGE_DIR, unique_filename)
-        
-        os.makedirs(ITEM_IMAGE_DIR, exist_ok=True)
-        with open(image_path, "wb") as image_file:
-            shutil.copyfileobj(file.file, image_file)
-        
-        image_url = f"/images/items/{unique_filename}"
-    
-    # ItemCreate 스키마 생성
+     # ItemCreate 스키마 생성
     item_data = schema.ItemCreate(
         storage_no=storage_no,
         item_name=item_name,
@@ -354,29 +342,8 @@ async def create_item_route(
     )
 
     # 물건 추가
-    new_item = crud.create_item(db=db, item=item_data, image_url=image_url)
+    new_item = crud.create_item(db=db, item=item_data, file=file)
     return {"msg": "Item created successfully", "item_id": new_item.item_id}
-
-# 물건 수정
-@router.put("/item/{item_id}", response_model=schema.ItemCreate, summary="물건 수정")
-def update_item(
-    item_id: int,
-    item: schema.ItemUpdate,
-    db: Session = Depends(get_db),
-    current_user: schema.User = Depends(auth.get_current_user)
-):
-    # 물건이 존재하는지 확인
-    db_item = crud.get_item(db, item_id=item_id)
-    if not db_item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
-
-    # 물건이 현재 사용자의 소유 가구에 있는지 확인
-    storage = crud.get_storage(db=db, storage_no=db_item.storage_no)
-    if storage.room_no not in [room.room_no for room in crud.get_rooms_by_user(db, user_no=current_user.user_no)]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to update this item.")
-
-    updated_item = crud.update_item(db=db, item_id=item_id, item_data=item)
-    return updated_item
 
 # 물건 조회
 @router.get("/item/{item_id}", response_model=schema.ItemCreate, summary="물건 조회")
@@ -431,6 +398,29 @@ def get_items_by_storage_route(
     # 특정 가구에 있는 모든 물건 조회
     items = crud.get_items_by_storage(db=db, storage_no=storage_no)
     return items if items else []
+
+# 물건 수정
+@router.put("/item/{item_id}", response_model=schema.ItemCreate, summary="물건 수정")
+async def update_item_route(
+    item_id: int,
+    item: schema.ItemUpdate,
+    file: Optional[UploadFile] = File(None),  # 이미지 파일은 선택 사항
+    db: Session = Depends(get_db),
+    current_user: schema.User = Depends(auth.get_current_user)
+):
+    # 물건이 존재하는지 확인
+    db_item = crud.get_item(db, item_id=item_id)
+    if not db_item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+
+    # 물건이 현재 사용자의 소유 가구에 있는지 확인
+    storage = crud.get_storage(db=db, storage_no=db_item.storage_no)
+    if storage.room_no not in [room.room_no for room in crud.get_rooms_by_user(db, user_no=current_user.user_no)]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to update this item.")
+
+    updated_item = crud.update_item(db=db, item_id=item_id, item_data=item, file=file)
+    return updated_item
+
 
 # 물건 삭제
 @router.delete("/item/{item_id}", summary="물건 삭제")

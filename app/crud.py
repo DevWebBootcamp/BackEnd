@@ -343,7 +343,10 @@ def delete_storage(db: Session, storage_no: int):
     return {"msg": "Storage deleted successfully"}
 
 # 물건 추가
-def create_item(db: Session, item: ItemCreate, image_url: Optional[str] = None):
+def create_item(db: Session, item: ItemCreate, file: Optional[UploadFile] = None):
+    # 이미지 저장
+    image_url = save_image(file, ITEM_IMAGE_DIR)
+
     # storage_no가 존재하는지 확인
     storage_instance = db.query(storage_storage).filter(storage_storage.storage_no == item.storage_no).first()
     if not storage_instance:
@@ -354,7 +357,7 @@ def create_item(db: Session, item: ItemCreate, image_url: Optional[str] = None):
         storage_no=item.storage_no,
         item_name=item.item_name,
         row_num=item.row_num,
-        item_imageURL=image_url if image_url else None,  # 이미지 URL이 있으면 저장
+        item_imageURL=image_url,  # 이미지 URL이 있으면 저장
         item_type=item.item_type,
         item_quantity=item.item_quantity,
         item_Expiration_date=item.item_Expiration_date,
@@ -384,13 +387,20 @@ def get_item_image_url(db: Session, item_id: int) -> str:
     return os.path.join(ITEM_IMAGE_DIR, os.path.basename(db_item_instance.item_imageURL))
 
 # 물건 수정
-def update_item(db: Session, item_id: int, item_data: ItemUpdate):
+def update_item(db: Session, item_id: int, item_data: ItemUpdate, file: Optional[UploadFile] = None):
     db_item_instance = get_item(db, item_id)
     if not db_item_instance:
         raise HTTPException(status_code=404, detail="Item not found")
-    
+
+    # 새로운 이미지가 업로드된 경우 저장
+    if file:
+        image_url = save_image(file, ITEM_IMAGE_DIR)
+        db_item_instance.item_imageURL = image_url
+
+    # 전달된 데이터만 업데이트
     for key, value in item_data.dict(exclude_unset=True).items():
         setattr(db_item_instance, key, value)
+
     db.commit()
     db.refresh(db_item_instance)
     return db_item_instance
