@@ -117,6 +117,8 @@ class Storage_Storage(Base):
     room_no = Column(Integer, ForeignKey('storage_room.room_no'))
     storage_name = Column(String(50), nullable=False)  
     storage_row = Column(Integer, nullable=False)  # 행
+    storage_location = Column(String(50), nullable=False) 
+    storage_description = Column(String(100), nullable=True)
     storage_created_date = Column(DateTime, default=MemberUser.get_kst_now)  # 생성 날짜
     storage_modification_date = Column(DateTime, onupdate=MemberUser.get_kst_now)
 
