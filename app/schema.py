@@ -115,11 +115,15 @@ class StorageCreate(BaseModel):
     room_no: int
     storage_name: str
     storage_row: int
+    storage_location: str
+    storage_description: Optional[str] = None
 
 # 가구 수정
 class StorageUpdate(BaseModel):
     storage_name: Optional[str] = None
     storage_row: Optional[int] = None
+    storage_location: Optional[str] = None
+    storage_description: Optional[str] = None
 
 # 가구 조회
 class Storage(BaseModel):
@@ -127,6 +131,8 @@ class Storage(BaseModel):
     room_no: int
     storage_name: str
     storage_row: int
+    storage_location: str
+    storage_description: Optional[str]
     storage_created_date: datetime
     storage_modification_date: Optional[datetime] = None
 
@@ -152,16 +158,16 @@ class ItemUpdate(BaseModel):
     item_imageURL: Optional[str] = None 
     item_Expiration_date: Optional[date] = None
 
-# 물건 조회
-class ItemSchema(BaseModel):
-    item_id: int
+class ItemSearch(BaseModel):
+    area_no: int
+    area_name: str
+    room_no: int
+    room_name: str
     storage_no: int
+    storage_name: str
     item_name: str
-    item_type: str
-    item_quantity: int
-    row_num: Optional[int] = None
+    item_type: ItemTypeEnum
+    item_quantity: int = Field(..., gt=0)  # 1 이상만 허용
+    row_num: Optional[int] = None  # 행 번호
+    item_imageURL: Optional[str] = None  # 이미지 URL
     item_Expiration_date: Optional[date] = None
-    item_imageURL: Optional[str] = None
-
-    class Config:
-        from_attributes = True
