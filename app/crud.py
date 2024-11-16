@@ -177,6 +177,9 @@ def load_user_storage_space(db: Session, user_no: int):
         raise HTTPException(status_code=404, detail="No storage spaces found for this user with the given area_no")
     return spaces
 
+# 공간 조회
+def get_area(db: Session, area_no: int):
+    return db.query(storage_area).filter(storage_area.area_no == area_no).first()
 
 # 특정 공간 조회
 def get_user_storage_space(db: Session, user_no: int, area_no: int):
@@ -412,7 +415,6 @@ def get_initial(item_name: str):
             initials += CHO[initial_index]
         else:
             initials += char  # 한글이 아니면 그대로 추가
-    print('initials: ', initials)
     return initials
 
 # 초성에 해당하는 모든 한글 문자 범위 생성

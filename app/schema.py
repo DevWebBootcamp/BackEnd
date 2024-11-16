@@ -157,3 +157,17 @@ class ItemUpdate(BaseModel):
     row_num: Optional[int] = None
     item_imageURL: Optional[str] = None 
     item_Expiration_date: Optional[date] = None
+
+class ItemSearch(BaseModel):
+    area_no: int
+    area_name: str
+    room_no: int
+    room_name: str
+    storage_no: int
+    storage_name: str
+    item_name: str
+    item_type: ItemTypeEnum
+    item_quantity: int = Field(..., gt=0)  # 1 이상만 허용
+    row_num: Optional[int] = None  # 행 번호
+    item_imageURL: Optional[str] = None  # 이미지 URL
+    item_Expiration_date: Optional[date] = None

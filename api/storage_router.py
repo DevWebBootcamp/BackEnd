@@ -428,12 +428,10 @@ def delete_item(
     return crud.delete_item(db=db, item_id=item_id)
 
 # 물건 자동완성 검색
-@router.get("/autocomplete", response_model=List[schema.ItemCreate], summary="물건 자동완성 검색")
+@router.get("/autocomplete", response_model=List[schema.ItemSearch], summary="물건 자동완성 검색")
 def autocomplete_item(item_name: str, db: Session = Depends(get_db), current_user: schema.User = Depends(auth.get_current_user)):
-    print("item_name1: ", item_name)
     # 아이템 이름에 부분 일치하는 결과 검색
     db_items = crud.get_item_list(db=db, item_name=item_name)
-    print("item_name2: ", item_name)
     if not db_items:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
     
@@ -441,12 +439,30 @@ def autocomplete_item(item_name: str, db: Session = Depends(get_db), current_use
     user_rooms = crud.get_rooms_by_user(db, user_no=current_user.user_no)
     user_room_nos = [room.room_no for room in user_rooms]
 
-    # 접근 가능한 아이템 필터링
+    # 접근 가능한 아이템 필터링과 추가 정보 조회
     accessible_items = []
     for item in db_items:
         storage = crud.get_storage(db=db, storage_no=item.storage_no)
         if storage and storage.room_no in user_room_nos:
-            accessible_items.append(item)
+            # 추가 정보 조회
+            room = crud.get_room(db=db, room_no=storage.room_no)
+            area = crud.get_area(db=db, area_no=room.area_no)
+
+            # 아이템 상세 정보를 구성
+            accessible_items.append(schema.ItemSearch(
+                area_no=area.area_no,
+                area_name=area.area_name,
+                room_no=room.room_no,
+                room_name=room.room_name,
+                storage_no=storage.storage_no,
+                storage_name=storage.storage_name,
+                item_name=item.item_name,
+                item_type=item.item_type,
+                item_quantity=item.item_quantity,
+                row_num=item.row_num,
+                item_imageURL=item.item_imageURL,
+                item_Expiration_date=item.item_Expiration_date
+            ))
 
     if not accessible_items:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to view these items.")
