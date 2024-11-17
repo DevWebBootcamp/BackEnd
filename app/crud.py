@@ -27,6 +27,7 @@ from typing import Optional
 from fastapi import UploadFile
 from datetime import datetime
 from app.config import ITEM_IMAGE_DIR, PROFILE_IMAGE_DIR
+import uuid
 
 def get_user_by_no(db: Session, user_no: int):
     return db.query(member_user).filter(member_user.user_no == user_no).first()
@@ -71,21 +72,41 @@ def authenticate_user(db: Session, user_email: str, password: str):
         return db_user
     return None
 
+# 이미지 저장
+def save_image(file: Optional[UploadFile], directory: str) -> Optional[str]:
+    """업로드된 파일을 지정된 디렉토리에 저장하고, 저장된 파일의 URL을 반환."""
+    if not file:
+        return None
+
+    # 디렉토리가 존재하지 않으면 생성
+    os.makedirs(directory, exist_ok=True)
+
+    unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
+    image_path = os.path.join(directory, unique_filename)
+    
+    with open(image_path, "wb") as image_file:
+        shutil.copyfileobj(file.file, image_file)
+    
+    return f"/images/{os.path.basename(directory)}/{unique_filename}"  # 이미지 URL 반환
 
 # 프로필 등록
-def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate, image_url: str):
+def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate, file: Optional[UploadFile] = None):
     user = get_user_by_no(db, user_no=user_no)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # 기존 프로필이 있는지 확인
     existing_profile = get_profile_by_user_no(db=db, user_no=user_no)
     if existing_profile:
         raise HTTPException(status_code=400, detail="Profile already exists for this user.")
 
+    # 이미지 저장 (이미지가 있는 경우에만 처리)
+    image_url = save_image(file, PROFILE_IMAGE_DIR) if file else None
+
     profile = member_profile(
         user_no=user_no,
-        nickname=profile_data.nickname,
-        image_url=image_url,  # 이미지 URL 저장
+        nickname=profile_data.nickname if profile_data.nickname else None,
+        image_url=image_url,  # 이미지 URL이 있을 경우 저장
         create_date=member_user.get_kst_now()
     )
 
@@ -93,7 +114,7 @@ def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate, 
     db.commit()
     db.refresh(profile)
     return profile
-    
+
 # 프로필 조회 // 이미지 조회에 필요
 def get_profile_by_user_no(db: Session, user_no: int):
     return db.query(member_profile).filter(member_profile.user_no == user_no).first()
@@ -103,21 +124,22 @@ def get_user_info_with_profile(db: Session, user_no: int) -> UserInfo:
     user = get_user_by_no(db, user_no)
     profile = get_profile_by_user_no(db, user_no)
 
-    if not user or not profile:
-        raise HTTPException(status_code=404, detail="User or profile not found")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
+    # 프로필 정보가 없을 경우 profile 관련 필드를 None으로 설정
     return UserInfo(
         email=user.email,
         user_name=user.user_name,
-        nickname=profile.nickname,
+        nickname=profile.nickname if profile else None,
         cell_phone=user.cell_phone,
         birthday=user.birthday,
         gender=user.gender,
-         image_url=f"/images/profile/{os.path.basename(profile.image_url)}" if profile.image_url else None
+        image_url=f"/images/profile/{os.path.basename(profile.image_url)}" if profile and profile.image_url else None
     )
 
 # 프로필 수정
-def profile_update(db: Session, user_no: int, profile_data: ProfileUpdate, image_url: Optional[UploadFile] = None):
+def profile_update(db: Session, user_no: int, profile_data: ProfileUpdate, file: Optional[UploadFile] = None):
     user = get_user_by_no(db, user_no=user_no)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -130,14 +152,8 @@ def profile_update(db: Session, user_no: int, profile_data: ProfileUpdate, image
         profile.nickname = profile_data.nickname
 
     # 새 이미지가 업로드된 경우 파일을 저장하고 URL 갱신
-    if image_url:
-        unique_filename = f"{uuid.uuid4().hex}_{image_url.filename}"
-        image_path = os.path.join(IMAGE_UPLOAD_DIR, unique_filename)
-        
-        with open(image_path, "wb") as image:
-            shutil.copyfileobj(image_file.file, image)
-        
-        profile.image_url = f"/images/profile/{unique_filename}"
+    if file:
+        profile.image_url = save_image(file, PROFILE_IMAGE_DIR)
 
     # 수정 시각 업데이트
     profile.update_date = member_user.get_kst_now()
@@ -282,8 +298,6 @@ def create_storage(db: Session, storage: StorageCreate):
         room_no=storage.room_no,
         storage_name=storage.storage_name,
         storage_row=storage.storage_row,
-        storage_location=storage.storage_location,
-        storage_description=storage.storage_description,
     )
     db.add(db_storage)
     db.commit()
@@ -333,8 +347,11 @@ def delete_storage(db: Session, storage_no: int):
     return {"msg": "Storage deleted successfully"}
 
 # 물건 추가
-def create_item(db: Session, item: ItemCreate, image_url: str):
-    # 먼저 storage_no가 존재하는지 확인
+def create_item(db: Session, item: ItemCreate, file: Optional[UploadFile] = None):
+    # 이미지 저장
+    image_url = save_image(file, ITEM_IMAGE_DIR)
+
+    # storage_no가 존재하는지 확인
     storage_instance = db.query(storage_storage).filter(storage_storage.storage_no == item.storage_no).first()
     if not storage_instance:
         raise HTTPException(status_code=404, detail="Storage not found")
@@ -344,7 +361,7 @@ def create_item(db: Session, item: ItemCreate, image_url: str):
         storage_no=item.storage_no,
         item_name=item.item_name,
         row_num=item.row_num,
-        item_imageURL=image_url,  # 이미지 URL 저장
+        item_imageURL=image_url,  # 이미지 URL이 있으면 저장
         item_type=item.item_type,
         item_quantity=item.item_quantity,
         item_Expiration_date=item.item_Expiration_date,
@@ -362,10 +379,18 @@ def get_item(db: Session, item_id: int):
         raise HTTPException(status_code=404, detail="Item not found")
     return db_item_instance
 
-# 특정 가구에 포함된 물건 조회
+# 특정 가구에 있는 모든 물건 조회
 def get_items_by_storage(db: Session, storage_no: int):
     return db.query(db_item).filter(db_item.storage_no == storage_no).all()
 
+# 특정 가구의 특정 칸에 있는 모든 물건 조회
+def get_items_by_storage_and_row(db: Session, storage_no: int, row_num: int):
+    items = (
+        db.query(db_item)
+        .filter(db_item.storage_no == storage_no, db_item.row_num == row_num)
+        .all()
+    )
+    return items
 
 # 물건 이미지 URL 조회
 def get_item_image_url(db: Session, item_id: int) -> str:
@@ -375,13 +400,20 @@ def get_item_image_url(db: Session, item_id: int) -> str:
     return os.path.join(ITEM_IMAGE_DIR, os.path.basename(db_item_instance.item_imageURL))
 
 # 물건 수정
-def update_item(db: Session, item_id: int, item_data: ItemUpdate):
+def update_item(db: Session, item_id: int, item_data: ItemUpdate, file: Optional[UploadFile] = None):
     db_item_instance = get_item(db, item_id)
     if not db_item_instance:
         raise HTTPException(status_code=404, detail="Item not found")
-    
+
+    # 새로운 이미지가 업로드된 경우 저장
+    if file:
+        image_url = save_image(file, ITEM_IMAGE_DIR)
+        db_item_instance.item_imageURL = image_url
+
+    # 전달된 데이터만 업데이트
     for key, value in item_data.dict(exclude_unset=True).items():
         setattr(db_item_instance, key, value)
+
     db.commit()
     db.refresh(db_item_instance)
     return db_item_instance
@@ -403,9 +435,10 @@ def delete_item(db: Session, item_id: int):
     db.commit()
     return {"msg": "Item and its image deleted successfully"}
 
-# 초성 분리 및 검색을 위한 코드 예시
+# 초성 분리 및 검색 관련 정의
 CHO = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"]
 
+# 주어진 문자열의 초성을 추출하여 반환
 def get_initial(item_name: str):
     initials = ""
     for char in item_name:
@@ -422,6 +455,7 @@ def get_chosung_range(chosung):
     start_code = ord('가') + CHO.index(chosung) * 588
     return [chr(start_code + i * 28 + j) for i in range(21) for j in range(28)]  # 21개의 중성과 28개의 종성 조합
 
+# 물건 검색
 def get_item_list(db: Session, item_name: str):
     # 입력값의 초성을 가져옴
     item_initial = get_initial(item_name)

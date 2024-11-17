@@ -117,8 +117,6 @@ class Storage_Storage(Base):
     room_no = Column(Integer, ForeignKey('storage_room.room_no'))
     storage_name = Column(String(50), nullable=False)  
     storage_row = Column(Integer, nullable=False)  # 행
-    storage_location = Column(String(50), nullable=False) 
-    storage_description = Column(String(100), nullable=True)
     storage_created_date = Column(DateTime, default=MemberUser.get_kst_now)  # 생성 날짜
     storage_modification_date = Column(DateTime, onupdate=MemberUser.get_kst_now)
 
@@ -132,7 +130,7 @@ class Item(Base):
     item_id = Column(Integer, primary_key=True, index=True)
     storage_no = Column(Integer, ForeignKey("storage_storage.storage_no"))
     item_name = Column(String(50), nullable=False)
-    row_num = Column(Integer) 
+    row_num = Column(Integer, nullable=False) 
     item_imageURL = Column(String(100), nullable=True)
     item_type = Column(Enum("식품", "전자제품", "의류", "사무용품", "생활용품", "기타", name="item_type_enum"), nullable=False)
     item_quantity = Column(Integer, nullable=False, default=1)
