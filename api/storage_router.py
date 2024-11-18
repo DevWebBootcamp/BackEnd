@@ -438,6 +438,20 @@ def get_items_by_storage_row(
     
     return items
 
+# 사용자의 모든 물건 조회
+@router.get("/{user_no}/items", response_model=List[schema.UserItemsSchema], summary="사용자의 모든 물건 조회")
+def get_user_all_items(
+    user_no: int,
+    db: Session = Depends(get_db),
+    current_user: schema.User = Depends(auth.get_current_user)
+):
+    # 현재 사용자만 자신의 데이터를 조회할 수 있음
+    if user_no != current_user.user_no:
+        raise HTTPException(status_code=403, detail="You do not have permission to access this data.")
+
+    items = crud.get_all_user_items(db, user_no)
+    return items
+
 # 물건 수정
 @router.put("/item/{item_id}", response_model=schema.ItemCreate, summary="물건 수정")
 async def update_item_route(
@@ -509,6 +523,7 @@ def autocomplete_item(item_name: str, db: Session = Depends(get_db), current_use
                 room_name=room.room_name,
                 storage_no=storage.storage_no,
                 storage_name=storage.storage_name,
+                item_id=item.item_id,
                 item_name=item.item_name,
                 item_type=item.item_type,
                 item_quantity=item.item_quantity,

@@ -392,6 +392,29 @@ def get_items_by_storage_and_row(db: Session, storage_no: int, row_num: int):
     )
     return items
 
+# 사용자의 모든 물건 조회
+def get_all_user_items(db: Session, user_no: int):
+    results = (
+        db.query(
+            storage_area.area_no,
+            storage_area.area_name,
+            storage_room.room_no,
+            storage_room.room_name,
+            storage_storage.storage_no,
+            storage_storage.storage_name,
+            db_item.row_num,
+            db_item.item_id,
+            db_item.item_name
+        )
+        .join(storage_room, storage_area.area_no == storage_room.area_no)
+        .join(storage_storage, storage_room.room_no == storage_storage.room_no)
+        .join(db_item, storage_storage.storage_no == db_item.storage_no)
+        .filter(storage_area.user_no == user_no)
+        .all()
+    )
+
+    return results
+
 # 물건 이미지 URL 조회
 def get_item_image_url(db: Session, item_id: int) -> str:
     db_item_instance = get_item(db, item_id)
