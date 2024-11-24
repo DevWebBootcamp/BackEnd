@@ -134,7 +134,7 @@ class Item(Base):
     item_imageURL = Column(String(100), nullable=True)
     item_type = Column(Enum("식품", "전자제품", "의류", "사무용품", "생활용품", "기타", name="item_type_enum"), nullable=False)
     item_quantity = Column(Integer, nullable=False, default=1)
-    item_Expiration_date = Column(Date, nullable=True)
+    item_Expiration_date = Column(String(50), nullable=True)
     item_received_date = Column(DateTime, default=MemberUser.get_kst_now)
     item_modification_date = Column(DateTime, onupdate=MemberUser.get_kst_now)
 

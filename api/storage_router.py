@@ -321,7 +321,7 @@ async def create_item_route(
     item_type: str = Form(...),
     item_quantity: int = Form(...),
     row_num: int = Form(...),
-    item_Expiration_date: Optional[date] = Form(None),
+    item_Expiration_date: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),  # 이미지 파일은 선택 사항
     db: Session = Depends(get_db),
     current_user: schema.User = Depends(auth.get_current_user)

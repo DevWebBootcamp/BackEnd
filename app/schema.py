@@ -141,7 +141,7 @@ class ItemCreate(BaseModel):
     item_quantity: int = Field(..., gt=0)  # 1 이상만 허용
     row_num: int = Field(..., gt=0)  # 행 번호
     item_imageURL: Optional[str] = None  # 이미지 URL
-    item_Expiration_date: Optional[date] = None
+    item_Expiration_date: Optional[str] = None
 
 # 물건 수정
 class ItemUpdate(BaseModel):
@@ -150,7 +150,7 @@ class ItemUpdate(BaseModel):
     item_quantity: Optional[int] = Field(None, gt=0)
     row_num: Optional[int] = None
     item_imageURL: Optional[str] = None 
-    item_Expiration_date: Optional[date] = None
+    item_Expiration_date: Optional[str] = None
 
 # 물건 조회
 class ItemSchema(BaseModel):
@@ -160,7 +160,7 @@ class ItemSchema(BaseModel):
     item_type: str
     item_quantity: int
     row_num: int
-    item_Expiration_date: Optional[date] = None
+    item_Expiration_date: Optional[str] = None
     item_imageURL: Optional[str] = None
 
     class Config:
@@ -188,7 +188,7 @@ class ItemSearch(BaseModel):
     item_quantity: int = Field(..., gt=0)  # 1 이상만 허용
     row_num: int  # 행 번호
     item_imageURL: Optional[str] = None  # 이미지 URL
-    item_Expiration_date: Optional[date] = None
+    item_Expiration_date: Optional[str] = None
 
 class UserItemsSchema(BaseModel):
     area_no: int
