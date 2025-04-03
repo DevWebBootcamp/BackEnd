@@ -27,4 +27,5 @@ SQLAlchemy==2.0.29
 starlette==0.37.2
 typing_extensions==4.11.0
 uvicorn==0.29.0
+redis==5.2.1
 #python==3.9.19
