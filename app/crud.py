@@ -28,9 +28,43 @@ from fastapi import UploadFile
 from datetime import datetime
 from app.config import ITEM_IMAGE_DIR, PROFILE_IMAGE_DIR
 import uuid
+import redis
+
+# Redis 클라이언트 초기화 (로컬 Redis 가정)
+redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+
+# Redis 키 접두사 정의
+USER_CACHE_PREFIX = "user:"
+PROFILE_CACHE_PREFIX = "profile:"
+AREA_CACHE_PREFIX = "area:"
+ROOM_CACHE_PREFIX = "room:"
+ITEM_CACHE_PREFIX = "item:"
+
+
+import json
 
 def get_user_by_no(db: Session, user_no: int):
-    return db.query(member_user).filter(member_user.user_no == user_no).first()
+    cache_key = f"{USER_CACHE_PREFIX}{user_no}"
+    
+    # 캐시에서 먼저 조회
+    cached_user = redis_client.get(cache_key)
+    if cached_user:
+        return json.loads(cached_user)  # JSON 문자열을 객체로 변환
+    
+    # 캐시 없으면 DB 조회
+    user = db.query(member_user).filter(member_user.user_no == user_no).first()
+    if user:
+        # 캐시에 저장 (TTL 1시간 = 3600초)
+        user_dict = {
+            "user_no": user.user_no,
+            "email": user.email,
+            "user_name": user.user_name,
+            "cell_phone": user.cell_phone,
+            "birthday": str(user.birthday),  # DateTime 직렬화
+            "gender": user.gender
+        }
+        redis_client.setex(cache_key, 3600, json.dumps(user_dict))
+    return user
 
 
 def get_user_by_email(db: Session, email: str):
@@ -117,7 +151,23 @@ def create_user_profile(db: Session, user_no: int, profile_data: ProfileCreate, 
 
 # 프로필 조회 // 이미지 조회에 필요
 def get_profile_by_user_no(db: Session, user_no: int):
-    return db.query(member_profile).filter(member_profile.user_no == user_no).first()
+    cache_key = f"{PROFILE_CACHE_PREFIX}{user_no}"
+    
+    cached_profile = redis_client.get(cache_key)
+    if cached_profile:
+        return json.loads(cached_profile)
+    
+    profile = db.query(member_profile).filter(member_profile.user_no == user_no).first()
+    if profile:
+        profile_dict = {
+            "profile_id": profile.profile_id,
+            "user_no": profile.user_no,
+            "nickname": profile.nickname,
+            "image_url": profile.image_url,
+            "create_date": str(profile.create_date)
+        }
+        redis_client.setex(cache_key, 3600, json.dumps(profile_dict))
+    return profile
 
 # 사용자 정보 + 프로필 조회
 def get_user_info_with_profile(db: Session, user_no: int) -> UserInfo:
@@ -150,15 +200,15 @@ def profile_update(db: Session, user_no: int, profile_data: ProfileUpdate, file:
 
     if profile_data.nickname is not None:
         profile.nickname = profile_data.nickname
-
-    # 새 이미지가 업로드된 경우 파일을 저장하고 URL 갱신
     if file:
         profile.image_url = save_image(file, PROFILE_IMAGE_DIR)
-
-    # 수정 시각 업데이트
     profile.update_date = member_user.get_kst_now()
     db.commit()
     db.refresh(profile)
+    
+    # 캐시 무효화
+    cache_key = f"{PROFILE_CACHE_PREFIX}{user_no}"
+    redis_client.delete(cache_key)
     return profile
 
 # 비밀번호 변경
@@ -381,7 +431,26 @@ def get_item(db: Session, item_id: int):
 
 # 특정 가구에 있는 모든 물건 조회
 def get_items_by_storage(db: Session, storage_no: int):
-    return db.query(db_item).filter(db_item.storage_no == storage_no).all()
+    cache_key = f"{ITEM_CACHE_PREFIX}{storage_no}"
+    
+    cached_items = redis_client.get(cache_key)
+    if cached_items:
+        return json.loads(cached_items)
+    
+    items = db.query(db_item).filter(db_item.storage_no == storage_no).all()
+    if items:
+        items_list = [
+            {
+                "item_id": item.item_id,
+                "item_name": item.item_name,
+                "row_num": item.row_num,
+                "item_imageURL": item.item_imageURL,
+                "item_type": item.item_type,
+                "item_quantity": item.item_quantity
+            } for item in items
+        ]
+        redis_client.setex(cache_key, 1800, json.dumps(items_list))  # TTL 30분
+    return items
 
 # 특정 가구의 특정 칸에 있는 모든 물건 조회
 def get_items_by_storage_and_row(db: Session, storage_no: int, row_num: int):
