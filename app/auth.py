@@ -50,7 +50,8 @@ bearer_scheme = HTTPBearer()
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     token = credentials.credentials
     credentials_exception = HTTPException(
-        status_code=401, detail="Could not validate credentials"
+        status_code=401, detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"},
+        
     )
     try:
         # JWT 토큰 디코딩 및 사용자 ID 추출
